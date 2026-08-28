@@ -1,0 +1,2221 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>LOOM</title>
+
+  <!-- EmailJS SDK -->
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+
+  <style>
+    /* =====================================================
+       RESET & BASE
+    ===================================================== */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #ffffff;
+      font-family: 'SofiaSansExtraCondensed-Regular', sans-serif;
+    }
+
+    /* =====================================================
+       VIEWPORT WRAPPER — 1080×1920, мащабиран към екрана
+    ===================================================== */
+    #app-viewport {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 1080px;
+      height: 1920px;
+      transform-origin: top left;
+      overflow: hidden;
+    }
+
+    /* =====================================================
+       ГЛОБАЛЕН ЛОУДЪР
+    ===================================================== */
+    #loom-global-loader {
+      display: none;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 1080px;
+      height: 1920px;
+      z-index: 99999;
+      background: rgba(255, 255, 255, 0.85);
+      pointer-events: all;
+      touch-action: none;
+      justify-content: center;
+      align-items: center;
+    }
+
+    #loom-global-loader img {
+      width: 200px;
+      height: 200px;
+    }
+
+    /* =====================================================
+       ШРИФТОВЕ
+    ===================================================== */
+    @font-face {
+      font-family: 'SofiaSansExtraCondensed-Regular';
+      src: url('SofiaSansExtraCondensed-Regular.ttf') format('truetype');
+    }
+    @font-face {
+      font-family: 'SofiaSansExtraCondensed-Bold';
+      src: url('SofiaSansExtraCondensed-Bold.ttf') format('truetype');
+    }
+    @font-face {
+      font-family: 'RobotoSlab-Regular';
+      src: url('RobotoSlab-Regular.ttf') format('truetype');
+    }
+    @font-face {
+      font-family: 'RobotoSlab-Bold';
+      src: url('RobotoSlab-Bold.ttf') format('truetype');
+    }
+    @font-face {
+      font-family: 'ShantellSans-Regular';
+      src: url('ShantellSans-Regular.ttf') format('truetype');
+    }
+    @font-face {
+      font-family: 'ShantellSans-Bold';
+      src: url('ShantellSans-Bold.ttf') format('truetype');
+    }
+    @font-face {
+      font-family: 'Unbounded-Regular';
+      src: url('Unbounded-Regular.ttf') format('truetype');
+    }
+    @font-face {
+      font-family: 'Unbounded-Bold';
+      src: url('Unbounded-Bold.ttf') format('truetype');
+    }
+
+    /* =====================================================
+       СЛОЕВЕ / ЕКРАНИ
+    ===================================================== */
+    .screen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 1080px;
+      height: 1920px;
+      display: none;
+    }
+
+    .screen.active {
+      display: block;
+    }
+
+    /* =====================================================
+       ПОМОЩЕН КЛАС — PNG елемент (абсолютно позициониран)
+    ===================================================== */
+    .ui-el {
+      position: absolute;
+      display: none;
+      cursor: pointer;
+      touch-action: none;
+      user-select: none;
+    }
+
+    .ui-el.visible {
+      display: block;
+    }
+
+    .ui-el img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    /* =====================================================
+       ТЕКСТОВИ ПОЛЕТА ЗА ВХОД / РЕГИСТРАЦИЯ
+    ===================================================== */
+    .auth-input {
+      position: absolute;
+      width: 458px;
+      height: 49px;
+      background: transparent;
+      border: none;
+      outline: none;
+      font-family: 'SofiaSansExtraCondensed-Bold', sans-serif;
+      font-size: 18px;
+      color: #333;
+      padding: 0 10px;
+    }
+
+    .auth-input::placeholder {
+      color: #999;
+      font-family: 'SofiaSansExtraCondensed-Bold', sans-serif;
+      font-size: 18px;
+    }
+
+    /* =====================================================
+       ТЕКСТОВО ПОЛЕ НА БЕЛЕЖКА (contenteditable)
+    ===================================================== */
+    .note-text-field {
+      position: absolute;
+      background: transparent;
+      border: none;
+      outline: none;
+      overflow: auto;
+      font-family: 'SofiaSansExtraCondensed-Regular', sans-serif;
+      font-size: 18px;
+      color: #333;
+      padding: 8px;
+      word-wrap: break-word;
+      z-index: 2;
+      touch-action: auto;
+    }
+
+    /* =====================================================
+       КАНВАС ЗА РИСУВАНЕ
+    ===================================================== */
+    .note-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      background: transparent;
+      z-index: 3;
+      display: none;
+      touch-action: none;
+    }
+
+    /* =====================================================
+       РЕШЕТКА (reshetka)
+    ===================================================== */
+    #reshetka-container {
+      position: absolute;
+      touch-action: none;
+      z-index: 500;
+      display: none;
+    }
+
+    #reshetka-container img {
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    /* =====================================================
+       БЕЛЕЖКИ ВЪРХУ ГЛАВНИТЕ СТРАНИЦИ (запазени)
+    ===================================================== */
+    .saved-note {
+      position: absolute;
+      cursor: pointer;
+      touch-action: none;
+      z-index: 10;
+    }
+
+    .saved-note img.note-img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    .saved-note canvas.saved-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+    }
+
+    .saved-note .saved-text {
+      position: absolute;
+      background: transparent;
+      overflow: hidden;
+      pointer-events: none;
+      font-size: 18px;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+
+<!-- =====================================================
+     APP VIEWPORT
+===================================================== -->
+<div id="app-viewport">
+
+  <!-- =====================================================
+       ГЛОБАЛЕН ЛОУДЪР
+  ===================================================== -->
+  <div id="loom-global-loader">
+    <img src="Loom_anima.gif" alt="Loading..." />
+  </div>
+
+  <!-- =====================================================
+       2HTML — СТРАНИЦА 1 (Вход / Регистрация / Гост)
+  ===================================================== -->
+  <div id="screen-auth" class="screen active">
+    <!-- Бял фон -->
+    <img src="bql_fon.png" style="position:absolute;top:0;left:0;width:1080px;height:1920px;z-index:0;" alt="" />
+
+    <!-- Декоративен елемент — най-горе, над всичко -->
+    <img src="decorativen_loom_viziq.png" style="position:absolute;z-index:100;" id="deco-auth" alt="" />
+
+    <!-- Бутони -->
+    <div class="ui-el visible" id="btn-login-page" onclick="showPage('screen-login')">
+      <img src="vlez_belejka_log_in.png" alt="Влез" />
+    </div>
+    <div class="ui-el visible" id="btn-register-page" onclick="showPage('screen-register')">
+      <img src="registrirai_se_belejka_sign_up.png" alt="Регистрирай се" />
+    </div>
+    <div class="ui-el visible" id="btn-guest" onclick="guestLogin()">
+      <img src="buton_vlez_za_da_razgledash.png" alt="Влез за да разгледаш" />
+    </div>
+  </div>
+
+  <!-- =====================================================
+       2HTML — СТРАНИЦА 2 (Регистрация)
+  ===================================================== -->
+  <div id="screen-register" class="screen">
+    <img src="bql_fon.png" style="position:absolute;top:0;left:0;width:1080px;height:1920px;z-index:0;" alt="" />
+    <img src="decorativen_loom_viziq.png" style="position:absolute;z-index:100;" alt="" />
+    <img src="belejka_osnova_za_registraciq_sign_up.png" style="position:absolute;z-index:1;" alt="" />
+
+    <!-- Email поле -->
+    <img src="registraciq_mqsto_za_email_sign_up.png"
+         style="position:absolute;left:338px;top:785px;width:458px;height:49px;z-index:2;" alt="" />
+    <input class="auth-input"
+           id="reg-email"
+           type="email"
+           placeholder="type your email here"
+           style="left:338px;top:785px;z-index:3;" />
+
+    <!-- Потребителско име -->
+    <img src="registraciq_mqsto_za_potrebitelsko_ime_sign_up.png"
+         style="position:absolute;left:338px;top:966px;width:458px;height:49px;z-index:2;" alt="" />
+    <input class="auth-input"
+           id="reg-username"
+           type="text"
+           placeholder="type your username here"
+           style="left:338px;top:966px;z-index:3;" />
+
+    <!-- Парола -->
+    <img src="registraciq_mqsto_za_parola_sign_up.png"
+         style="position:absolute;left:338px;top:1148px;width:458px;height:49px;z-index:2;" alt="" />
+    <input class="auth-input"
+           id="reg-password"
+           type="password"
+           placeholder="type your password here"
+           style="left:338px;top:1148px;z-index:3;" />
+
+    <!-- Готово -->
+    <div class="ui-el visible" id="btn-register-submit" onclick="doRegister()">
+      <img src="buton_gotovo_sign_up_registraciq.png" alt="Готово" />
+    </div>
+  </div>
+
+  <!-- =====================================================
+       2HTML — СТРАНИЦА 3 (Вход)
+  ===================================================== -->
+  <div id="screen-login" class="screen">
+    <img src="bql_fon.png" style="position:absolute;top:0;left:0;width:1080px;height:1920px;z-index:0;" alt="" />
+    <img src="decorativen_loom_viziq.png" style="position:absolute;z-index:100;" alt="" />
+    <img src="belejka_osnova_za_vlizane_vlez_log_in.png" style="position:absolute;z-index:1;" alt="" />
+
+    <!-- Email / Username поле -->
+    <img src="log_in_mqsto_za_vuvejdane_na_email_ili_potrebitelsko.png"
+         style="position:absolute;left:338px;top:849px;width:458px;height:49px;z-index:2;" alt="" />
+    <input class="auth-input"
+           id="login-email"
+           type="text"
+           placeholder="type your email/username here"
+           style="left:338px;top:849px;z-index:3;" />
+
+    <!-- Парола -->
+    <img src="log_in_mqsto_za_vuvejdane_na_parola.png"
+         style="position:absolute;left:338px;top:1054px;width:458px;height:49px;z-index:2;" alt="" />
+    <input class="auth-input"
+           id="login-password"
+           type="password"
+           placeholder="type your password here"
+           style="left:338px;top:1054px;z-index:3;" />
+
+    <!-- Невалиден имейл/парола -->
+    <img src="text_nevaliden_email_parola_log_in.png"
+         id="login-error-msg"
+         style="position:absolute;z-index:5;display:none;" alt="" />
+
+    <!-- Готово -->
+    <div class="ui-el visible" id="btn-login-submit" onclick="doLogin()">
+      <img src="buton_gotovo_log_in_za_vuvedenite_danni.png" alt="Готово" />
+    </div>
+  </div>
+
+  <!-- =====================================================
+       2HTML — СТРАНИЦА 4 (Запазване на данни)
+  ===================================================== -->
+  <div id="screen-save-data" class="screen">
+    <img src="bql_fon.png" style="position:absolute;top:0;left:0;width:1080px;height:1920px;z-index:0;" alt="" />
+    <img src="decorativen_loom_viziq.png" style="position:absolute;z-index:100;" alt="" />
+    <img src="osnova_zapazvane_na_danni_sled_vhod_registraciq.png" style="position:absolute;z-index:1;" alt="" />
+
+    <div class="ui-el visible" id="btn-allow-save" onclick="allowSaveData()">
+      <img src="buton_pozvoli_za_osnova_zapazvane_na_danni_sled_vhod_registraciq.png" alt="Позволи" />
+    </div>
+    <div class="ui-el visible" id="btn-deny-save" onclick="denySaveData()">
+      <img src="buton_otkaji_za_osnova_zapazvane_na_danni_sled_vhod_registraciq.png" alt="Откажи" />
+    </div>
+  </div>
+
+  <!-- =====================================================
+       2HTML — СТРАНИЦА 5 (Известия)
+  ===================================================== -->
+  <div id="screen-notifications" class="screen">
+    <img src="bql_fon.png" style="position:absolute;top:0;left:0;width:1080px;height:1920px;z-index:0;" alt="" />
+    <img src="decorativen_loom_viziq.png" style="position:absolute;z-index:100;" alt="" />
+    <img src="belejka_osnova_priemi_izvestiqta.png" style="position:absolute;z-index:1;" alt="" />
+
+    <div class="ui-el visible" id="btn-allow-notif" onclick="allowNotifications()">
+      <img src="buton_priemi_izvestiqta1.png" alt="Приеми известията" />
+    </div>
+    <div class="ui-el visible" id="btn-deny-notif" onclick="denyNotifications()">
+      <img src="buton_otkaji_izvestiqta1.png" alt="Откажи известията" />
+    </div>
+  </div>
+
+  <!-- =====================================================
+       1HTML — ГЛАВЕН ЕКРАН
+  ===================================================== -->
+  <div id="screen-main" class="screen">
+
+    <!-- Главни страници (S1–S5) — плъзгащ контейнер -->
+    <div id="pages-wrapper"
+         style="position:absolute;top:0;left:0;width:5400px;height:1920px;display:flex;transition:transform 0.3s ease;">
+      <div class="main-page" id="page-s1" style="position:relative;width:1080px;height:1920px;flex-shrink:0;">
+        <img src="S1.png" style="width:1080px;height:1920px;" alt="" />
+      </div>
+      <div class="main-page" id="page-s2" style="position:relative;width:1080px;height:1920px;flex-shrink:0;">
+        <img src="S2.png" style="width:1080px;height:1920px;" alt="" />
+      </div>
+      <div class="main-page" id="page-s3" style="position:relative;width:1080px;height:1920px;flex-shrink:0;">
+        <img src="S3.png" style="width:1080px;height:1920px;" alt="" />
+      </div>
+      <div class="main-page" id="page-s4" style="position:relative;width:1080px;height:1920px;flex-shrink:0;">
+        <img src="S4.png" style="width:1080px;height:1920px;" alt="" />
+      </div>
+      <div class="main-page" id="page-s5" style="position:relative;width:1080px;height:1920px;flex-shrink:0;">
+        <img src="S5.png" style="width:1080px;height:1920px;" alt="" />
+      </div>
+    </div>
+
+    <!-- Бутон профил — стои винаги отгоре -->
+    <div class="ui-el visible" id="btn-profile" style="z-index:200;" onclick="toggleProfileMenu()">
+      <img src="buton_loom_za_profil.png" alt="Профил" />
+    </div>
+
+    <!-- Бутон нова бележка — стои винаги отгоре -->
+    <div class="ui-el visible" id="btn-new-note" style="z-index:200;" onclick="openNewNote()">
+      <img src="buton_nova_belejka.png" alt="Нова бележка" />
+    </div>
+
+    <!-- ===================================================
+         ЖЪЛТ ФОН (при създаване/редакция на бележка)
+    =================================================== -->
+    <div id="jult-fon-layer"
+         style="position:absolute;top:0;left:0;width:1080px;height:1920px;z-index:300;display:none;">
+      <img src="jult_fon.png"
+           style="width:1080px;height:1920px;display:block;"
+           id="jult-fon-img"
+           alt="" />
+    </div>
+
+    <!-- ===================================================
+         АТРИБУТНИ БУТОНИ (при нова/редактирана бележка)
+    =================================================== -->
+    <div class="ui-el" id="btn-attr-bold" style="z-index:400;" onclick="toggleBold()">
+      <img src="buton_atributi_bold_1.png" alt="Bold" />
+    </div>
+    <div class="ui-el" id="btn-attr-palette" style="z-index:400;" onclick="toggleColorPalette()">
+      <img src="buton_atributi_palitra_2.png" alt="Палитра" />
+    </div>
+    <div class="ui-el" id="btn-attr-font" style="z-index:400;" onclick="cycleFont()">
+      <img src="buton_atributi_font_3.png" alt="Шрифт" />
+    </div>
+    <div class="ui-el" id="btn-attr-title" style="z-index:400;" onclick="cycleFontSize()">
+      <img src="buton_atributi_tittle_4.png" alt="Размер" />
+    </div>
+    <div class="ui-el" id="btn-attr-arrow" style="z-index:400;" onclick="activateNotePositioning()">
+      <img src="buton_atributi_strelka_5.png" alt="Наместване" />
+    </div>
+    <div class="ui-el" id="btn-attr-urgent" style="z-index:400;" onclick="toggleUrgent()">
+      <img src="buton_atributi_speshni_6.png" alt="Спешна" />
+    </div>
+    <div class="ui-el" id="btn-attr-brush" style="z-index:400;" onclick="toggleBrushMode()">
+      <img src="buton_atributi_chetka_7.png" alt="Четка" />
+    </div>
+
+    <!-- ===================================================
+         ПАЛИТРА ЗА ЦВЯТ НА БЕЛЕЖКА
+    =================================================== -->
+    <div class="ui-el" id="color-palette-overlay" style="z-index:410;pointer-events:none;">
+      <img src="osnova_palitra_csvqt_belejka.png" alt="" />
+    </div>
+    <div class="ui-el" id="cp-white"    style="z-index:420;" onclick="changeNoteColor('white')">
+      <img src="bql_csvqt_palitra.png" alt="Бяло" />
+    </div>
+    <div class="ui-el" id="cp-yellow"   style="z-index:420;" onclick="changeNoteColor('yellow')">
+      <img src="jult_csvqt_palitra.png" alt="Жълто" />
+    </div>
+    <div class="ui-el" id="cp-pink"     style="z-index:420;" onclick="changeNoteColor('pink')">
+      <img src="rozov_csvqt_palitra.png" alt="Розово" />
+    </div>
+    <div class="ui-el" id="cp-blue"     style="z-index:420;" onclick="changeNoteColor('blue')">
+      <img src="sinio_csvqt_palitra.png" alt="Синьо" />
+    </div>
+    <div class="ui-el" id="cp-darkblue" style="z-index:420;" onclick="changeNoteColor('darkblue')">
+      <img src="tumno_sinio_csvqt_palitra.png" alt="Тъмно синьо" />
+    </div>
+    <div class="ui-el" id="cp-brown"    style="z-index:420;" onclick="changeNoteColor('brown')">
+      <img src="kafqvo_csvqt_palitra.png" alt="Кафяво" />
+    </div>
+    <div class="ui-el" id="cp-green"    style="z-index:420;" onclick="changeNoteColor('green')">
+      <img src="zeleno_csvqt_palitra.png" alt="Зелено" />
+    </div>
+
+    <!-- ===================================================
+         ПАЛИТРА ЗА ЧЕТКА (цвят + размер)
+    =================================================== -->
+    <div class="ui-el" id="brush-palette-base" style="z-index:410;pointer-events:none;">
+      <img src="osnova_chetka_palitra_csvetove.png" alt="" />
+    </div>
+    <!-- Цветове на четката -->
+    <div class="ui-el" id="bp-white"    style="z-index:420;" onclick="setBrushColor('#ffffff')">
+      <img src="chetka_palitra_bql.png" alt="" />
+    </div>
+    <div class="ui-el" id="bp-yellow"   style="z-index:420;" onclick="setBrushColor('#f9df7c')">
+      <img src="chetka_palitra_jult.png" alt="" />
+    </div>
+    <div class="ui-el" id="bp-pink"     style="z-index:420;" onclick="setBrushColor('#ffa7d3')">
+      <img src="chetka_palitra_rozovo.png" alt="" />
+    </div>
+    <div class="ui-el" id="bp-blue"     style="z-index:420;" onclick="setBrushColor('#bfe0ff')">
+      <img src="chetka_palitra_sinio.png" alt="" />
+    </div>
+    <div class="ui-el" id="bp-darkblue" style="z-index:420;" onclick="setBrushColor('#4b90d2')">
+      <img src="chetka_palitra_tumno_sinio.png" alt="" />
+    </div>
+    <div class="ui-el" id="bp-brown"    style="z-index:420;" onclick="setBrushColor('#bd8858')">
+      <img src="chetka_palitra_kafqvo.png" alt="" />
+    </div>
+    <div class="ui-el" id="bp-green"    style="z-index:420;" onclick="setBrushColor('#95bb62')">
+      <img src="chetka_palitra_zeleno.png" alt="" />
+    </div>
+    <div class="ui-el" id="bp-black"    style="z-index:420;" onclick="setBrushColor('#000000')">
+      <img src="chetka_palitra_cherno.png" alt="" />
+    </div>
+    <!-- Размери на четката -->
+    <div class="ui-el" id="bs-1" style="z-index:420;" onclick="setBrushSize(2)">
+      <img src="chetka_golemina_1.png" alt="" />
+    </div>
+    <div class="ui-el" id="bs-2" style="z-index:420;" onclick="setBrushSize(4)">
+      <img src="chetka_golemina_2.png" alt="" />
+    </div>
+    <div class="ui-el" id="bs-3" style="z-index:420;" onclick="setBrushSize(8)">
+      <img src="chetka_golemina_3.png" alt="" />
+    </div>
+    <div class="ui-el" id="bs-4" style="z-index:420;" onclick="setBrushSize(12)">
+      <img src="chetka_golemina_4.png" alt="" />
+    </div>
+    <div class="ui-el" id="bs-5" style="z-index:420;" onclick="setBrushSize(16)">
+      <img src="chetka_golemina_5.png" alt="" />
+    </div>
+    <!-- Undo / Redo на рисуване -->
+    <div class="ui-el" id="btn-canvas-undo" style="z-index:420;" onclick="canvasUndo()">
+      <img src="buton_palitra_strelka_vrushtane_na_nazad.png" alt="Undo" />
+    </div>
+    <div class="ui-el" id="btn-canvas-redo" style="z-index:420;" onclick="canvasRedo()">
+      <img src="buton_palitra_strelka_otmqna_na_vrushtane_na_nazad.png" alt="Redo" />
+    </div>
+
+    <!-- ===================================================
+         ИЗВЕСТИЕ ЗА СПЕШНИ БЕЛЕЖКИ (при отказани notif)
+    =================================================== -->
+    <div class="ui-el" id="urgent-notif-overlay" style="z-index:600;pointer-events:none;">
+      <img src="osnova_izvestie_atributi_speshni_belejki.png" alt="" />
+    </div>
+    <div class="ui-el" id="btn-notif-accept-urgent" style="z-index:610;" onclick="acceptUrgentNotif()">
+      <img src="buton_izvestie_atributi_priemi_speshni.png" alt="Приеми" />
+    </div>
+    <div class="ui-el" id="btn-notif-deny-urgent" style="z-index:610;" onclick="denyUrgentNotif()">
+      <img src="buton_izvestie_atributi_otkaji_speshni.png" alt="Откажи" />
+    </div>
+
+    <!-- ===================================================
+         АКТИВНА БЕЛЕЖКА (при редакция / нова)
+    =================================================== -->
+    <div id="active-note-container" style="position:absolute;z-index:350;display:none;touch-action:none;">
+      <!-- Изображение на бележката -->
+      <img id="active-note-img" src="" alt=""
+           style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;" />
+
+      <!-- Текстово поле -->
+      <div id="active-note-textfield"
+           class="note-text-field"
+           contenteditable="true"
+           spellcheck="false"
+           style="position:absolute;"></div>
+
+      <!-- Канвас за рисуване -->
+      <canvas id="active-note-canvas" class="note-canvas"></canvas>
+    </div>
+
+    <!-- ===================================================
+         РЕШЕТКА ЗА НАМЕСТВАНЕ
+    =================================================== -->
+    <div id="reshetka-container">
+      <img src="reshetka.png" alt="Решетка" />
+    </div>
+    <div class="ui-el" id="btn-confirm-position" style="z-index:520;" onclick="confirmNotePosition()">
+      <img src="buton_otmetka_reshetka.png" alt="Потвърди" />
+    </div>
+
+    <!-- ===================================================
+         БУТОНИ ПРИ НАТИСКАНЕ НА ЗАПАЗЕНА БЕЛЕЖКА
+    =================================================== -->
+    <div class="ui-el" id="btn-saved-urgent"  style="z-index:550;" onclick="savedNoteToggleUrgent()">
+      <img src="buton_speshna_belejka_sled_redakciq.png" alt="Спешна" />
+    </div>
+    <div class="ui-el" id="btn-saved-edit"    style="z-index:550;" onclick="savedNoteEdit()">
+      <img src="buton_za_redakciq_na_belejkata.png" alt="Редакция" />
+    </div>
+    <div class="ui-el" id="btn-saved-reposition" style="z-index:550;" onclick="savedNoteReposition()">
+      <img src="buton_strelka_redakciq.png" alt="Наместване" />
+    </div>
+    <div class="ui-el" id="btn-saved-delete"  style="z-index:550;" onclick="savedNoteDelete()">
+      <img src="buton_iztrivane_na_belejkata.png" alt="Изтриване" />
+    </div>
+
+    <!-- ===================================================
+         ПРОФИЛ МЕНЮ
+    =================================================== -->
+    <div class="ui-el" id="profile-menu-overlay" style="z-index:700;pointer-events:none;">
+      <img src="osnova_profil_nastroiki.png" alt="" />
+    </div>
+    <!-- Меню за влязъл потребител -->
+    <div class="ui-el" id="btn-change-pass" style="z-index:710;" onclick="changePassword()">
+      <img src="buton_smqna_na_parola_potrebitelsko_ime_profil_nastroiki.png" alt="Смяна" />
+    </div>
+    <div class="ui-el" id="btn-logout" style="z-index:710;" onclick="doLogout()">
+      <img src="buton_izhod_profil_nastroiki.png" alt="Изход" />
+    </div>
+    <div class="ui-el" id="btn-delete-profile" style="z-index:710;" onclick="confirmDeleteProfile()">
+      <img src="buton_iztrivane_na_profila_profil_nastroiki.png" alt="Изтрий профил" />
+    </div>
+    <div class="ui-el" id="btn-profile-back" style="z-index:710;" onclick="closeProfileMenu()">
+      <img src="buton_za_vrushtane_nazad.png" alt="Назад" />
+    </div>
+    <!-- Меню за гост -->
+    <div class="ui-el" id="btn-guest-login-option"    style="z-index:710;" onclick="guestGoToLogin()">
+      <img src="vlez_za_da_razgledash_nastroiki_1.png" alt="Влез" />
+    </div>
+    <div class="ui-el" id="btn-guest-register-option" style="z-index:710;" onclick="guestGoToRegister()">
+      <img src="vlez_za_da_razgledash_nastroiki_2.png" alt="Регистрирай се" />
+    </div>
+
+    <!-- Потвърждение за изтриване на профил -->
+    <div class="ui-el" id="delete-profile-confirm-overlay" style="z-index:720;pointer-events:none;">
+      <img src="izvestie_sigurni_li_ste_za_iztrivaneto_na_profila.png" alt="" />
+    </div>
+    <div class="ui-el" id="btn-delete-profile-cancel" style="z-index:730;" onclick="cancelDeleteProfile()">
+      <img src="buton_izvestie_sigurni_li_ste_za_iztrivaneto_na_profila_otkaji.png" alt="Откажи" />
+    </div>
+    <div class="ui-el" id="btn-delete-profile-confirm" style="z-index:730;" onclick="executeDeleteProfile()">
+      <img src="buton_izvestie_sigurni_li_ste_za_iztrivaneto_na_profila_priemi_i_iztrii.png" alt="Изтрий" />
+    </div>
+
+    <!-- Страница след Смяна на парола -->
+    <div class="ui-el" id="change-pass-overlay" style="z-index:720;pointer-events:none;">
+      <img src="belejka_osnova_sled_buton_smqna_na_parola_ili_potrebitelsko_ime_belejka_vlezte_v_emaila_si.png" alt="" />
+    </div>
+    <div class="ui-el" id="btn-change-pass-back" style="z-index:730;" onclick="changePasswordBack()">
+      <img src="buton_za_vrushtane_nazad.png" alt="Назад" />
+    </div>
+
+  </div><!-- /screen-main -->
+
+</div><!-- /app-viewport -->
+
+<!-- =====================================================
+     FIREBASE & ЛОГИКА
+===================================================== -->
+<script type="module">
+  import { initializeApp }       from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
+  import {
+    getAuth,
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
+    signInAnonymously,
+    linkWithCredential,
+    EmailAuthProvider,
+    sendPasswordResetEmail,
+    deleteUser,
+    onAuthStateChanged,
+    signOut
+  }                              from "https://www.gstatic.com/firebasejs/12.17.1/firebase-auth.js";
+  import {
+    getFirestore,
+    collection,
+    doc,
+    setDoc,
+    getDoc,
+    getDocs,
+    updateDoc,
+    deleteDoc,
+    query,
+    where
+  }                              from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
+  import { getMessaging, getToken, onMessage }
+                                 from "https://www.gstatic.com/firebasejs/12.17.1/firebase-messaging.js";
+  import { getAnalytics }        from "https://www.gstatic.com/firebasejs/12.17.1/firebase-analytics.js";
+
+  // ---------------------------------------------------
+  // Firebase конфигурация
+  // ---------------------------------------------------
+  const firebaseConfig = {
+    apiKey:            "AIzaSyBuvj_grP4GZ9T5GuQCLo4dx7KehZIBgSw",
+    authDomain:        "loom-e0b46.firebaseapp.com",
+    projectId:         "loom-e0b46",
+    storageBucket:     "loom-e0b46.firebasestorage.app",
+    messagingSenderId: "813806858100",
+    appId:             "1:813806858100:web:6c642ffa831b1713d60621",
+    measurementId:     "G-1ZN47R60LH"
+  };
+
+  const app       = initializeApp(firebaseConfig);
+  const auth      = getAuth(app);
+  const db        = getFirestore(app);
+  const messaging = getMessaging(app);
+  const analytics = getAnalytics(app);
+
+  // ---------------------------------------------------
+  // EmailJS
+  // ---------------------------------------------------
+  emailjs.init("UMm5X0he_bMYDZPpG");
+
+  // ---------------------------------------------------
+  // Глобален лоудър
+  // ---------------------------------------------------
+  window.showLoomLoader = function () {
+    const loader = document.getElementById('loom-global-loader');
+    loader.style.display = 'flex';
+  };
+
+  window.hideLoomLoader = function () {
+    const loader = document.getElementById('loom-global-loader');
+    loader.style.display = 'none';
+  };
+
+  // ---------------------------------------------------
+  // Мащабиране на viewport
+  // ---------------------------------------------------
+  function scaleViewport() {
+    const vp       = document.getElementById('app-viewport');
+    const scaleX   = window.innerWidth  / 1080;
+    const scaleY   = window.innerHeight / 1920;
+    const scale    = Math.min(scaleX, scaleY);
+    const offsetX  = (window.innerWidth  - 1080 * scale) / 2;
+    const offsetY  = (window.innerHeight - 1920 * scale) / 2;
+    vp.style.transform       = `translate(${offsetX}px, ${offsetY}px) scale(${scale})`;
+    vp.style.transformOrigin = 'top left';
+  }
+  scaleViewport();
+  window.addEventListener('resize', scaleViewport);
+
+  // ---------------------------------------------------
+  // Навигация между екраните
+  // ---------------------------------------------------
+  window.showPage = function (pageId) {
+    document.querySelectorAll('.screen').forEach(function (s) {
+      s.classList.remove('active');
+    });
+    document.getElementById(pageId).classList.add('active');
+  };
+
+  // ---------------------------------------------------
+  // ГЛОБАЛНО СЪСТОЯНИЕ
+  // ---------------------------------------------------
+  var currentUser        = null;
+  var isGuestMode        = false;
+  var notificationsAccepted = false;
+  var profileMenuOpen    = false;
+  var colorPaletteOpen   = false;
+  var brushPaletteOpen   = false;
+  var brushModeActive    = false;
+
+  // Активна бележка (при създаване/редакция)
+  var activeNote = {
+    id:             null,    // null = нова
+    type:           4,       // 1,2,3,4 — вид на бележка
+    color:          'white', // текущ цвят
+    isUrgent:       false,
+    prevColor:      'white', // цвят преди "спешна"
+    fontIndex:      0,       // 0=Sofia,1=Roboto,2=Shantell,3=Unbounded
+    fontSizeIndex:  0,       // 0=18px, 1=24px, 2=32px
+    isBold:         false,
+    typeLocked:     false,   // заключен вид след писане/рисуване
+    posX:           0,
+    posY:           0,
+    width:          0,
+    height:         0,
+    rotation:       0,
+    pageIndex:      0,       // S1=0 … S5=4
+    canvasStrokes:  [],      // масив от векторни щрихи [{color,size,points:[]}]
+    canvasUndoStack: [],
+    canvasRedoStack: [],
+    brushColor:     '#000000',
+    brushSize:      4
+  };
+
+  // Запазени бележки
+  var savedNotes         = [];        // масив от обекти
+  var selectedSavedNote  = null;      // бележка, върху която е кликнато
+
+  // Текущ индекс на главна страница (0–4)
+  var currentPageIndex   = 0;
+
+  // ---------------------------------------------------
+  // ДЕФИНИЦИИ НА БЕЛЕЖКИТЕ (размери + отстояния + ротация)
+  // ---------------------------------------------------
+  var noteDefinitions = {
+    1: { width: 636, height: 450, left: 219, top: 631, rotation: 0   },
+    2: { width: 637, height: 552, left: 212, top: 669, rotation: 0   },
+    3: { width: 542, height: 490, left: 284, top: 744, rotation: 2   },
+    4: { width: 653, height: 511, left: 202, top: 635, rotation: 0   }
+  };
+
+  // ---------------------------------------------------
+  // КАРТА НА PNG ФАЙЛОВЕТЕ НА БЕЛЕЖКИТЕ
+  // ---------------------------------------------------
+  var noteImages = {
+    1: {
+      white:    '1belejka_bqla.png',
+      yellow:   '1belejka_julta.png',
+      pink:     '1belejka_rozovo.png',
+      blue:     '1belejka_sinio.png',
+      darkblue: '1belejka_tumno_sinio.png',
+      brown:    '1belejka_kafqvo.png',
+      green:    '1belejka_zelena.png',
+      urgent:   '1belejka_speshna.png'
+    },
+    2: {
+      white:    '2belejka_bqlo.png',
+      yellow:   '2belejka_julta.png',
+      pink:     '2belejka_rozovo.png',
+      blue:     '2belejka_sinio.png',
+      darkblue: '2belejka_tumno_sinio.png',
+      brown:    '2belejka_kafqvo.png',
+      green:    '2belejka_zeleno.png',
+      urgent:   '2belejka_speshna.png'
+    },
+    3: {
+      white:    '3belejka_bqlo.png',
+      yellow:   '3belejka_julto.png',
+      pink:     '3belejka_rozovo.png',
+      blue:     '3belejka_sinio.png',
+      darkblue: '3belejka_tumno_sinio.png',
+      brown:    '3belejka_kafqvo.png',
+      green:    '3belejka_zeleno.png',
+      urgent:   '3belejka_speshna.png'
+    },
+    4: {
+      white:    '4belejka_bqlo.png',
+      yellow:   '4belejka_julto.png',
+      pink:     '4belejka_rozovo.png',
+      blue:     '4belejka_sinio.png',
+      darkblue: '4belejka_tumno_sinio.png',
+      brown:    '4belejka_kafqvo.png',
+      green:    '4belejka_zeleno.png',
+      urgent:   '4belejka_speshna.png'
+    }
+  };
+
+  // ---------------------------------------------------
+  // ПОМОЩНА — взима правилния PNG за активна бележка
+  // ---------------------------------------------------
+  function getActiveNoteImage() {
+    var colorKey = activeNote.isUrgent ? 'urgent' : activeNote.color;
+    return noteImages[activeNote.type][colorKey];
+  }
+
+  // ---------------------------------------------------
+  // ПОМОЩНА — обновява img на активната бележка
+  // ---------------------------------------------------
+  function updateActiveNoteImage() {
+    document.getElementById('active-note-img').src = getActiveNoteImage();
+  }
+
+  // ---------------------------------------------------
+  // ПОМОЩНА — показва/скрива елемент
+  // ---------------------------------------------------
+  function show(id) {
+    var el = document.getElementById(id);
+    if (el) {
+      el.classList.add('visible');
+      el.style.display = 'block';
+    }
+  }
+
+  function hide(id) {
+    var el = document.getElementById(id);
+    if (el) {
+      el.classList.remove('visible');
+      el.style.display = 'none';
+    }
+  }
+
+  // ---------------------------------------------------
+  // ПЛЪЗГАНЕ НА ГЛАВНИТЕ СТРАНИЦИ
+  // ---------------------------------------------------
+  var pageSwipeStartX    = 0;
+  var pageSwipeStartY    = 0;
+  var pageSwipeDragging  = false;
+  var pageInitialScale   = 1;
+  var pageCurrentScale   = 1;
+
+  var pagesWrapper = document.getElementById('pages-wrapper');
+
+  function updatePagesTranslation() {
+    pagesWrapper.style.transform = 'translateX(' + (-currentPageIndex * 1080) + 'px)';
+    pagesWrapper.style.transition = 'transform 0.3s ease';
+  }
+
+  function goToPage(index) {
+    if (index < 0)  { index = 4; }
+    if (index > 4)  { index = 0; }
+    currentPageIndex = index;
+    updatePagesTranslation();
+  }
+
+  document.getElementById('screen-main').addEventListener('touchstart', function (e) {
+    if (isNoteEditorOpen() || profileMenuOpen) { return; }
+    if (e.touches.length === 1) {
+      pageSwipeStartX   = e.touches[0].clientX;
+      pageSwipeStartY   = e.touches[0].clientY;
+      pageSwipeDragging = true;
+    }
+  }, { passive: true });
+
+  document.getElementById('screen-main').addEventListener('touchend', function (e) {
+    if (!pageSwipeDragging) { return; }
+    pageSwipeDragging = false;
+    var deltaX = e.changedTouches[0].clientX - pageSwipeStartX;
+    var deltaY = e.changedTouches[0].clientY - pageSwipeStartY;
+    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50) {
+      if (deltaX < 0) {
+        goToPage(currentPageIndex + 1);
+      } else {
+        goToPage(currentPageIndex - 1);
+      }
+    }
+  }, { passive: true });
+
+  // Клавиатурни стрелки за посоки
+  document.addEventListener('keydown', function (e) {
+    if (isNoteEditorOpen()) { return; }
+    if (e.key === 'ArrowRight') { goToPage(currentPageIndex + 1); }
+    if (e.key === 'ArrowLeft')  { goToPage(currentPageIndex - 1); }
+  });
+
+  // Проверка дали редакторът на бележка е отворен
+  function isNoteEditorOpen() {
+    return document.getElementById('jult-fon-layer').style.display !== 'none';
+  }
+
+  // ---------------------------------------------------
+  // НОВА БЕЛЕЖКА
+  // ---------------------------------------------------
+  window.openNewNote = function () {
+    // Нулираме активното
+    activeNote.id           = null;
+    activeNote.type         = 4;
+    activeNote.color        = 'white';
+    activeNote.isUrgent     = false;
+    activeNote.prevColor    = 'white';
+    activeNote.fontIndex    = 0;
+    activeNote.fontSizeIndex= 0;
+    activeNote.isBold       = false;
+    activeNote.typeLocked   = false;
+    activeNote.canvasStrokes= [];
+    activeNote.canvasUndoStack = [];
+    activeNote.canvasRedoStack = [];
+    activeNote.brushColor   = '#000000';
+    activeNote.brushSize    = 4;
+
+    // Показваме жълтия фон
+    document.getElementById('jult-fon-layer').style.display = 'block';
+
+    // Показваме атрибутните бутони
+    showAttrButtons();
+
+    // Позиционираме активната бележка — 60px наляво от центъра
+    placeActiveNoteAtDefault();
+
+    // Свъртаме към бележка тип 4 по подразбиране
+    activeNote.type = 4;
+    setupActiveNoteContainer();
+
+    // Инициализираме плъзгането за смяна на вид
+    initNoteTypeSwipe();
+  };
+
+  function showAttrButtons() {
+    show('btn-attr-bold');
+    show('btn-attr-palette');
+    show('btn-attr-font');
+    show('btn-attr-title');
+    show('btn-attr-arrow');
+    show('btn-attr-urgent');
+    show('btn-attr-brush');
+    hide('btn-new-note');
+  }
+
+  function hideAttrButtons() {
+    hide('btn-attr-bold');
+    hide('btn-attr-palette');
+    hide('btn-attr-font');
+    hide('btn-attr-title');
+    hide('btn-attr-arrow');
+    hide('btn-attr-urgent');
+    hide('btn-attr-brush');
+    show('btn-new-note');
+    hideColorPalette();
+    hideBrushPalette();
+  }
+
+  // Позициониране на активната бележка по подразбиране
+  function placeActiveNoteAtDefault() {
+    var def   = noteDefinitions[activeNote.type];
+    var noteX = (1080 / 2) - 60 - def.width / 2;
+    var noteY = def.top;
+    activeNote.posX    = noteX;
+    activeNote.posY    = noteY;
+    activeNote.width   = def.width;
+    activeNote.height  = def.height;
+    activeNote.rotation= def.rotation;
+  }
+
+  // Настройва DOM контейнера на активна бележка
+  function setupActiveNoteContainer() {
+    var def  = noteDefinitions[activeNote.type];
+    var cont = document.getElementById('active-note-container');
+    cont.style.display  = 'block';
+    cont.style.left     = activeNote.posX + 'px';
+    cont.style.top      = activeNote.posY + 'px';
+    cont.style.width    = def.width + 'px';
+    cont.style.height   = def.height + 'px';
+    cont.style.transform= 'rotate(' + activeNote.rotation + 'deg)';
+
+    updateActiveNoteImage();
+    setupTextFieldForType();
+    setupCanvasForType();
+  }
+
+  // Текстово поле — размери спрямо типа
+  function setupTextFieldForType() {
+    var def  = noteDefinitions[activeNote.type];
+    var tf   = document.getElementById('active-note-textfield');
+    tf.style.width    = (def.width  - 40) + 'px';
+    tf.style.height   = (def.height - 60) + 'px';
+    tf.style.left     = '20px';
+    tf.style.top      = '40px';
+    tf.style.zIndex   = '2';
+    applyCurrentFont(tf);
+  }
+
+  // Канвас — обхваща цялата бележка
+  function setupCanvasForType() {
+    var def = noteDefinitions[activeNote.type];
+    var cv  = document.getElementById('active-note-canvas');
+    cv.width  = def.width;
+    cv.height = def.height;
+    cv.style.width  = def.width  + 'px';
+    cv.style.height = def.height + 'px';
+    redrawCanvas(cv);
+  }
+
+  // ---------------------------------------------------
+  // ПЛЪЗГАНЕ ЗА СМЯНА НА ВИД БЕЛЕЖКА (без typeLocked)
+  // ---------------------------------------------------
+  var noteTypeSwipeStartX  = 0;
+  var noteTypeSwipeDragging= false;
+
+  function initNoteTypeSwipe() {
+    var cont = document.getElementById('active-note-container');
+    cont.addEventListener('touchstart', onNoteTypeSwipeStart, { passive: true });
+    cont.addEventListener('touchend',   onNoteTypeSwipeEnd,   { passive: true });
+  }
+
+  function onNoteTypeSwipeStart(e) {
+    if (activeNote.typeLocked) { return; }
+    if (e.touches.length === 1) {
+      noteTypeSwipeStartX   = e.touches[0].clientX;
+      noteTypeSwipeDragging = true;
+    }
+  }
+
+  function onNoteTypeSwipeEnd(e) {
+    if (!noteTypeSwipeDragging || activeNote.typeLocked) { return; }
+    noteTypeSwipeDragging = false;
+    var deltaX = e.changedTouches[0].clientX - noteTypeSwipeStartX;
+    if (Math.abs(deltaX) < 50) { return; }
+    // Ред на видовете: 1,2,3,4 — цикличен
+    // S4 (вляво от центъра) → плъзване вляво показва 3, след 2, след 1
+    // плъзване надясно от 4 показва 1
+    var order    = [4, 3, 2, 1];
+    var curIdx   = order.indexOf(activeNote.type);
+    if (deltaX < 0) {
+      curIdx = (curIdx + 1) % order.length;
+    } else {
+      curIdx = (curIdx - 1 + order.length) % order.length;
+    }
+    activeNote.type = order[curIdx];
+    placeActiveNoteAtDefault();
+    setupActiveNoteContainer();
+  }
+
+  // ---------------------------------------------------
+  // ЦВЯТ НА БЕЛЕЖКА
+  // ---------------------------------------------------
+  window.toggleColorPalette = function () {
+    colorPaletteOpen = !colorPaletteOpen;
+    if (colorPaletteOpen) {
+      show('color-palette-overlay');
+      show('cp-white');
+      show('cp-yellow');
+      show('cp-pink');
+      show('cp-blue');
+      show('cp-darkblue');
+      show('cp-brown');
+      show('cp-green');
+    } else {
+      hideColorPalette();
+    }
+  };
+
+  function hideColorPalette() {
+    colorPaletteOpen = false;
+    hide('color-palette-overlay');
+    hide('cp-white');
+    hide('cp-yellow');
+    hide('cp-pink');
+    hide('cp-blue');
+    hide('cp-darkblue');
+    hide('cp-brown');
+    hide('cp-green');
+  }
+
+  window.changeNoteColor = function (colorName) {
+    activeNote.color    = colorName;
+    activeNote.isUrgent = false;
+    updateActiveNoteImage();
+    hideColorPalette();
+  };
+
+  // ---------------------------------------------------
+  // СПЕШНА БЕЛЕЖКА
+  // ---------------------------------------------------
+  window.toggleUrgent = function () {
+    var urgentOverlay = document.getElementById('urgent-notif-overlay');
+    // Проверяваме дали известията са отказани — ако да, показваме popup
+    if (!notificationsAccepted && !activeNote.isUrgent) {
+      show('urgent-notif-overlay');
+      show('btn-notif-accept-urgent');
+      show('btn-notif-deny-urgent');
+      return;
+    }
+    if (activeNote.isUrgent) {
+      // Отменяме спешното — връщаме предишния цвят
+      activeNote.isUrgent = false;
+      activeNote.color    = activeNote.prevColor;
+    } else {
+      activeNote.prevColor = activeNote.color;
+      activeNote.isUrgent  = true;
+    }
+    updateActiveNoteImage();
+  };
+
+  window.acceptUrgentNotif = function () {
+    notificationsAccepted = true;
+    hide('urgent-notif-overlay');
+    hide('btn-notif-accept-urgent');
+    hide('btn-notif-deny-urgent');
+    // Запазваме в профила — не показваме повторно
+    if (currentUser) {
+      updateDoc(doc(db, 'users', currentUser.uid), { notificationsAccepted: true }).catch(function () {});
+    }
+    requestPushPermission();
+    // Вече приети — изпълняваме toggleUrgent
+    window.toggleUrgent();
+  };
+
+  window.denyUrgentNotif = function () {
+    hide('urgent-notif-overlay');
+    hide('btn-notif-accept-urgent');
+    hide('btn-notif-deny-urgent');
+  };
+
+  // ---------------------------------------------------
+  // ШРИФТ
+  // ---------------------------------------------------
+  var fontFamilies = [
+    'SofiaSansExtraCondensed-Regular',
+    'RobotoSlab-Regular',
+    'ShantellSans-Regular',
+    'Unbounded-Regular'
+  ];
+
+  var fontFamiliesBold = [
+    'SofiaSansExtraCondensed-Bold',
+    'RobotoSlab-Bold',
+    'ShantellSans-Bold',
+    'Unbounded-Bold'
+  ];
+
+  var fontSizes = [18, 24, 32];
+
+  window.cycleFont = function () {
+    var tf  = document.getElementById('active-note-textfield');
+    var sel = window.getSelection();
+    if (sel && sel.toString().length > 0 && sel.rangeCount > 0) {
+      // Само селектираното
+      activeNote.fontIndex = (activeNote.fontIndex + 1) % 4;
+      applyFontToSelection(tf);
+    } else {
+      // Целия текст
+      activeNote.fontIndex = (activeNote.fontIndex + 1) % 4;
+      applyCurrentFont(tf);
+    }
+  };
+
+  function applyCurrentFont(tf) {
+    var family = activeNote.isBold
+      ? fontFamiliesBold[activeNote.fontIndex]
+      : fontFamilies[activeNote.fontIndex];
+    tf.style.fontFamily = "'" + family + "', sans-serif";
+    tf.style.fontSize   = fontSizes[activeNote.fontSizeIndex] + 'px';
+  }
+
+  function applyFontToSelection(tf) {
+    var family = activeNote.isBold
+      ? fontFamiliesBold[activeNote.fontIndex]
+      : fontFamilies[activeNote.fontIndex];
+    wrapSelectionWithSpan(tf, { fontFamily: "'" + family + "', sans-serif" });
+  }
+
+  // ---------------------------------------------------
+  // РАЗМЕР НА ШРИФТ
+  // ---------------------------------------------------
+  window.cycleFontSize = function () {
+    var tf  = document.getElementById('active-note-textfield');
+    var sel = window.getSelection();
+    activeNote.fontSizeIndex = (activeNote.fontSizeIndex + 1) % 3;
+    if (sel && sel.toString().length > 0 && sel.rangeCount > 0) {
+      wrapSelectionWithSpan(tf, { fontSize: fontSizes[activeNote.fontSizeIndex] + 'px' });
+    } else {
+      tf.style.fontSize = fontSizes[activeNote.fontSizeIndex] + 'px';
+    }
+  };
+
+  // ---------------------------------------------------
+  // BOLD
+  // ---------------------------------------------------
+  window.toggleBold = function () {
+    var tf  = document.getElementById('active-note-textfield');
+    var sel = window.getSelection();
+    activeNote.isBold = !activeNote.isBold;
+    var family = activeNote.isBold
+      ? fontFamiliesBold[activeNote.fontIndex]
+      : fontFamilies[activeNote.fontIndex];
+    if (sel && sel.toString().length > 0 && sel.rangeCount > 0) {
+      wrapSelectionWithSpan(tf, { fontFamily: "'" + family + "', sans-serif" });
+    } else {
+      tf.style.fontFamily = "'" + family + "', sans-serif";
+    }
+  };
+
+  // ---------------------------------------------------
+  // ОБВИВАНЕ НА СЕЛЕКЦИЯ В <span>
+  // ---------------------------------------------------
+  function wrapSelectionWithSpan(container, styles) {
+    var sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) { return; }
+    var range = sel.getRangeAt(0);
+    if (!container.contains(range.commonAncestorContainer)) { return; }
+    var span = document.createElement('span');
+    for (var prop in styles) {
+      span.style[prop] = styles[prop];
+    }
+    try {
+      range.surroundContents(span);
+    } catch (e) {
+      // Частична селекция — използваме extractContents
+      var fragment = range.extractContents();
+      span.appendChild(fragment);
+      range.insertNode(span);
+    }
+    sel.removeAllRanges();
+  }
+
+  // ---------------------------------------------------
+  // ЧЕТКА — режим и палитра
+  // ---------------------------------------------------
+  window.toggleBrushMode = function () {
+    brushModeActive = !brushModeActive;
+    var tf = document.getElementById('active-note-textfield');
+    var cv = document.getElementById('active-note-canvas');
+    if (brushModeActive) {
+      // Показваме палитрите
+      showBrushPalette();
+      // Канвасът над текста
+      cv.style.display = 'block';
+      cv.style.zIndex  = '3';
+      tf.style.zIndex  = '1';
+      // Заключваме вида на бележката
+      if (!activeNote.typeLocked) {
+        activeNote.typeLocked = true;
+      }
+    } else {
+      hideBrushPalette();
+      cv.style.display = 'none';
+      tf.style.zIndex  = '2';
+    }
+  };
+
+  function showBrushPalette() {
+    brushPaletteOpen = true;
+    show('brush-palette-base');
+    show('bp-white');
+    show('bp-yellow');
+    show('bp-pink');
+    show('bp-blue');
+    show('bp-darkblue');
+    show('bp-brown');
+    show('bp-green');
+    show('bp-black');
+    show('bs-1');
+    show('bs-2');
+    show('bs-3');
+    show('bs-4');
+    show('bs-5');
+    show('btn-canvas-undo');
+    show('btn-canvas-redo');
+  }
+
+  function hideBrushPalette() {
+    brushPaletteOpen = false;
+    hide('brush-palette-base');
+    hide('bp-white');
+    hide('bp-yellow');
+    hide('bp-pink');
+    hide('bp-blue');
+    hide('bp-darkblue');
+    hide('bp-brown');
+    hide('bp-green');
+    hide('bp-black');
+    hide('bs-1');
+    hide('bs-2');
+    hide('bs-3');
+    hide('bs-4');
+    hide('bs-5');
+    hide('btn-canvas-undo');
+    hide('btn-canvas-redo');
+  }
+
+  window.setBrushColor = function (hexColor) {
+    activeNote.brushColor = hexColor;
+  };
+
+  window.setBrushSize = function (px) {
+    activeNote.brushSize = px;
+  };
+
+  // ---------------------------------------------------
+  // РИСУВАНЕ ВЪРХУ КАНВАС
+  // ---------------------------------------------------
+  var currentStroke = null;
+
+  function initCanvasDrawing() {
+    var cv  = document.getElementById('active-note-canvas');
+    var ctx = cv.getContext('2d');
+    ctx.lineCap  = 'round';
+    ctx.lineJoin = 'round';
+
+    cv.addEventListener('mousedown', function (e) {
+      if (!brushModeActive) { return; }
+      startStroke(e.offsetX, e.offsetY, ctx);
+    });
+
+    cv.addEventListener('mousemove', function (e) {
+      if (!brushModeActive || !currentStroke) { return; }
+      continueStroke(e.offsetX, e.offsetY, ctx);
+    });
+
+    cv.addEventListener('mouseup', function () {
+      if (!brushModeActive) { return; }
+      endStroke();
+    });
+
+    cv.addEventListener('touchstart', function (e) {
+      if (!brushModeActive) { return; }
+      e.preventDefault();
+      var rect = cv.getBoundingClientRect();
+      var t    = e.touches[0];
+      startStroke(t.clientX - rect.left, t.clientY - rect.top, ctx);
+    }, { passive: false });
+
+    cv.addEventListener('touchmove', function (e) {
+      if (!brushModeActive || !currentStroke) { return; }
+      e.preventDefault();
+      var rect = cv.getBoundingClientRect();
+      var t    = e.touches[0];
+      continueStroke(t.clientX - rect.left, t.clientY - rect.top, ctx);
+    }, { passive: false });
+
+    cv.addEventListener('touchend', function () {
+      if (!brushModeActive) { return; }
+      endStroke();
+    });
+  }
+
+  function startStroke(x, y, ctx) {
+    // Заключваме вида на бележката при първото рисуване
+    if (!activeNote.typeLocked) {
+      activeNote.typeLocked = true;
+    }
+    activeNote.canvasRedoStack = [];
+    currentStroke = {
+      color:  activeNote.brushColor,
+      size:   activeNote.brushSize,
+      points: [{ x: x, y: y }]
+    };
+    ctx.beginPath();
+    ctx.strokeStyle = activeNote.brushColor;
+    ctx.lineWidth   = activeNote.brushSize;
+    ctx.moveTo(x, y);
+  }
+
+  function continueStroke(x, y, ctx) {
+    if (!currentStroke) { return; }
+    currentStroke.points.push({ x: x, y: y });
+    ctx.lineTo(x, y);
+    ctx.stroke();
+  }
+
+  function endStroke() {
+    if (!currentStroke) { return; }
+    activeNote.canvasStrokes.push(currentStroke);
+    activeNote.canvasUndoStack.push(JSON.parse(JSON.stringify(activeNote.canvasStrokes)));
+    currentStroke = null;
+  }
+
+  function redrawCanvas(cv) {
+    var ctx = cv.getContext('2d');
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    ctx.lineCap  = 'round';
+    ctx.lineJoin = 'round';
+    activeNote.canvasStrokes.forEach(function (stroke) {
+      ctx.beginPath();
+      ctx.strokeStyle = stroke.color;
+      ctx.lineWidth   = stroke.size;
+      stroke.points.forEach(function (pt, i) {
+        if (i === 0) { ctx.moveTo(pt.x, pt.y); }
+        else         { ctx.lineTo(pt.x, pt.y); }
+      });
+      ctx.stroke();
+    });
+  }
+
+  window.canvasUndo = function () {
+    if (activeNote.canvasUndoStack.length <= 1) {
+      activeNote.canvasRedoStack.push(JSON.parse(JSON.stringify(activeNote.canvasStrokes)));
+      activeNote.canvasStrokes = [];
+      activeNote.canvasUndoStack = [];
+    } else {
+      activeNote.canvasRedoStack.push(activeNote.canvasUndoStack.pop());
+      activeNote.canvasStrokes = JSON.parse(JSON.stringify(
+        activeNote.canvasUndoStack[activeNote.canvasUndoStack.length - 1] || []
+      ));
+    }
+    var cv = document.getElementById('active-note-canvas');
+    redrawCanvas(cv);
+  };
+
+  window.canvasRedo = function () {
+    if (activeNote.canvasRedoStack.length === 0) { return; }
+    var redoState = activeNote.canvasRedoStack.pop();
+    activeNote.canvasStrokes = JSON.parse(JSON.stringify(redoState));
+    activeNote.canvasUndoStack.push(JSON.parse(JSON.stringify(redoState)));
+    var cv = document.getElementById('active-note-canvas');
+    redrawCanvas(cv);
+  };
+
+  // ---------------------------------------------------
+  // НАМЕСТВАНЕ НА БЕЛЕЖКАТА (решетка)
+  // ---------------------------------------------------
+  window.activateNotePositioning = function () {
+    // Запазваме бележката, показваме решетката
+    var cont = document.getElementById('active-note-container');
+    var rc   = document.getElementById('reshetka-container');
+
+    // Преместваме бележката на центъра (по подразбиране)
+    var def   = noteDefinitions[activeNote.type];
+    activeNote.posX = (1080 / 2) - def.width / 2;
+    activeNote.posY = (1920 / 2) - def.height / 2;
+    cont.style.left = activeNote.posX + 'px';
+    cont.style.top  = activeNote.posY + 'px';
+
+    // Скриваме жълтия фон
+    document.getElementById('jult-fon-layer').style.display = 'none';
+
+    // Показваме решетката
+    rc.style.display = 'block';
+    rc.style.left    = activeNote.posX + 'px';
+    rc.style.top     = activeNote.posY + 'px';
+    rc.style.width   = def.width  + 'px';
+    rc.style.height  = def.height + 'px';
+
+    show('btn-confirm-position');
+    initReshetkaInteraction();
+  };
+
+  window.confirmNotePosition = function () {
+    hide('reshetka-container');
+    document.getElementById('reshetka-container').style.display = 'none';
+    hide('btn-confirm-position');
+    // Запазваме бележката
+    saveCurrentNote(true);
+  };
+
+  // Преместване и оразмеряване с пръст / мишка
+  function initReshetkaInteraction() {
+    var rc   = document.getElementById('reshetka-container');
+    var cont = document.getElementById('active-note-container');
+    var dragStartX, dragStartY, origLeft, origTop;
+    var resizing = false;
+    var resizeCorner = null;
+
+    rc.addEventListener('touchstart', function (e) {
+      if (e.touches.length === 1) {
+        dragStartX = e.touches[0].clientX;
+        dragStartY = e.touches[0].clientY;
+        origLeft   = activeNote.posX;
+        origTop    = activeNote.posY;
+      }
+    }, { passive: true });
+
+    rc.addEventListener('touchmove', function (e) {
+      e.preventDefault();
+      if (e.touches.length === 1) {
+        var dx = e.touches[0].clientX - dragStartX;
+        var dy = e.touches[0].clientY - dragStartY;
+        activeNote.posX = origLeft + dx;
+        activeNote.posY = origTop  + dy;
+        cont.style.left = activeNote.posX + 'px';
+        cont.style.top  = activeNote.posY + 'px';
+        rc.style.left   = activeNote.posX + 'px';
+        rc.style.top    = activeNote.posY + 'px';
+      } else if (e.touches.length === 2) {
+        // Двупръстово — мащабиране и ротация
+        var t1 = e.touches[0];
+        var t2 = e.touches[1];
+        var dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+        var newW = Math.max(60, dist);
+        var ratio= newW / activeNote.width;
+        activeNote.width  = newW;
+        activeNote.height = Math.max(60, activeNote.height * ratio);
+        cont.style.width  = activeNote.width  + 'px';
+        cont.style.height = activeNote.height + 'px';
+        rc.style.width    = activeNote.width  + 'px';
+        rc.style.height   = activeNote.height + 'px';
+        // Ротация
+        var angle = Math.atan2(t2.clientY - t1.clientY, t2.clientX - t1.clientX) * (180 / Math.PI);
+        activeNote.rotation = angle;
+        cont.style.transform = 'rotate(' + angle + 'deg)';
+        rc.style.transform   = 'rotate(' + angle + 'deg)';
+      }
+    }, { passive: false });
+  }
+
+  // ---------------------------------------------------
+  // ЗАТВАРЯНЕ НА БЕЛЕЖКАТА (клик извън)
+  // ---------------------------------------------------
+  document.getElementById('jult-fon-img').addEventListener('click', function (e) {
+    // Каскаден приоритет: ако палитрата е отворена — затваряме я
+    if (colorPaletteOpen) {
+      hideColorPalette();
+      return;
+    }
+    if (brushPaletteOpen) {
+      hideBrushPalette();
+      return;
+    }
+    // Иначе — записваме и затваряме
+    saveCurrentNote(false);
+  });
+
+  // ---------------------------------------------------
+  // ЗАПАЗВАНЕ НА БЕЛЕЖКА
+  // ---------------------------------------------------
+  function saveCurrentNote(manuallyPositioned) {
+    if (!currentUser) { return; }
+
+    var tf = document.getElementById('active-note-textfield');
+    var cv = document.getElementById('active-note-canvas');
+
+    // Снимаме канваса като dataURL
+    var canvasDataURL = cv.toDataURL('image/png');
+
+    var noteData = {
+      type:              activeNote.type,
+      color:             activeNote.color,
+      isUrgent:          activeNote.isUrgent,
+      fontIndex:         activeNote.fontIndex,
+      fontSizeIndex:     activeNote.fontSizeIndex,
+      isBold:            activeNote.isBold,
+      innerHTML:         tf.innerHTML,
+      canvasDataURL:     canvasDataURL,
+      canvasStrokes:     JSON.stringify(activeNote.canvasStrokes),
+      rotation:          activeNote.rotation,
+      pageIndex:         currentPageIndex,
+      timestamp:         Date.now()
+    };
+
+    if (manuallyPositioned) {
+      noteData.posX    = activeNote.posX;
+      noteData.posY    = activeNote.posY;
+      noteData.width   = activeNote.width;
+      noteData.height  = activeNote.height;
+    } else {
+      // Автоматично позициониране
+      var pos = findAutoPosition(activeNote.type, currentPageIndex);
+      noteData.posX    = pos.x;
+      noteData.posY    = pos.y;
+      noteData.width   = noteDefinitions[activeNote.type].width;
+      noteData.height  = noteDefinitions[activeNote.type].height;
+      noteData.pageIndex = pos.pageIndex;
+    }
+
+    showLoomLoader();
+    var noteRef = activeNote.id
+      ? doc(db, 'users', currentUser.uid, 'notes', activeNote.id)
+      : doc(collection(db, 'users', currentUser.uid, 'notes'));
+
+    setDoc(noteRef, noteData)
+      .then(function () {
+        noteData.id = noteRef.id;
+        // Ако е нова, добавяме в масива; ако е редакция — обновяваме
+        var existingIdx = savedNotes.findIndex(function (n) { return n.id === noteRef.id; });
+        if (existingIdx >= 0) {
+          savedNotes[existingIdx] = noteData;
+        } else {
+          savedNotes.push(noteData);
+        }
+        renderSavedNotes();
+        closeNoteEditor();
+        // Ако е спешна — пращаме известие
+        if (noteData.isUrgent && notificationsAccepted) {
+          sendPushNotification(noteRef.id, noteData);
+        }
+      })
+      .catch(function (err) {
+        console.error('Save error', err);
+      })
+      .finally(function () {
+        hideLoomLoader();
+      });
+  }
+
+  // Затваряме редактора
+  function closeNoteEditor() {
+    document.getElementById('jult-fon-layer').style.display = 'none';
+    document.getElementById('active-note-container').style.display = 'none';
+    hideAttrButtons();
+    var rc = document.getElementById('reshetka-container');
+    rc.style.display = 'none';
+    hide('btn-confirm-position');
+  }
+
+  // ---------------------------------------------------
+  // АВТОМАТИЧНО ПОЗИЦИОНИРАНЕ
+  // ---------------------------------------------------
+  function findAutoPosition(noteType, preferredPageIndex) {
+    var def   = noteDefinitions[noteType];
+    var margin= 20;
+
+    for (var p = preferredPageIndex; p < 5; p++) {
+      var notesOnPage = savedNotes.filter(function (n) { return n.pageIndex === p; });
+      // Търсим свободно място — grid scan
+      for (var y = margin; y < 1920 - def.height - margin; y += 50) {
+        for (var x = margin; x < 1080 - def.width - margin; x += 50) {
+          var fits = true;
+          for (var i = 0; i < notesOnPage.length; i++) {
+            var n = notesOnPage[i];
+            if (rectsOverlap(x, y, def.width, def.height,
+                             n.posX, n.posY, n.width, n.height, margin)) {
+              fits = false;
+              break;
+            }
+          }
+          if (fits) {
+            return { x: x, y: y, pageIndex: p };
+          }
+        }
+      }
+    }
+
+    // Всички страници са пълни — каскаден ефект на S1
+    var lastNote = savedNotes[savedNotes.length - 1] || { posX: 0, posY: 0 };
+    return { x: lastNote.posX + 15, y: lastNote.posY + 15, pageIndex: 0 };
+  }
+
+  function rectsOverlap(ax, ay, aw, ah, bx, by, bw, bh, margin) {
+    return !(ax + aw + margin <= bx ||
+             bx + bw + margin <= ax ||
+             ay + ah + margin <= by ||
+             by + bh + margin <= ay);
+  }
+
+  // ---------------------------------------------------
+  // РЕНДИРАНЕ НА ЗАПАЗЕНИ БЕЛЕЖКИ
+  // ---------------------------------------------------
+  function renderSavedNotes() {
+    // Изчистваме старите DOM елементи
+    document.querySelectorAll('.saved-note').forEach(function (el) {
+      el.remove();
+    });
+
+    savedNotes.forEach(function (note) {
+      var pageEl = document.getElementById('page-s' + (note.pageIndex + 1));
+      if (!pageEl) { return; }
+
+      var wrapper = document.createElement('div');
+      wrapper.classList.add('saved-note');
+      wrapper.dataset.noteId = note.id;
+      wrapper.style.left     = note.posX   + 'px';
+      wrapper.style.top      = note.posY   + 'px';
+      wrapper.style.width    = note.width  + 'px';
+      wrapper.style.height   = note.height + 'px';
+      wrapper.style.transform= 'rotate(' + (note.rotation || 0) + 'deg)';
+
+      // Изображение на бележката
+      var colorKey = note.isUrgent ? 'urgent' : note.color;
+      var imgEl    = document.createElement('img');
+      imgEl.classList.add('note-img');
+      imgEl.src = noteImages[note.type][colorKey];
+      wrapper.appendChild(imgEl);
+
+      // Текст
+      if (note.innerHTML) {
+        var textEl = document.createElement('div');
+        textEl.classList.add('saved-text');
+        textEl.style.left   = '20px';
+        textEl.style.top    = '40px';
+        textEl.style.width  = (note.width - 40) + 'px';
+        textEl.style.height = (note.height - 60) + 'px';
+        textEl.innerHTML    = note.innerHTML;
+        wrapper.appendChild(textEl);
+      }
+
+      // Канвас
+      if (note.canvasDataURL) {
+        var cvEl   = document.createElement('canvas');
+        cvEl.classList.add('saved-canvas');
+        cvEl.width  = note.width;
+        cvEl.height = note.height;
+        cvEl.style.width  = note.width  + 'px';
+        cvEl.style.height = note.height + 'px';
+        var savedCtx = cvEl.getContext('2d');
+        var imgData  = new Image();
+        imgData.onload = function () { savedCtx.drawImage(imgData, 0, 0); };
+        imgData.src    = note.canvasDataURL;
+        wrapper.appendChild(cvEl);
+      }
+
+      // Клик върху бележката
+      wrapper.addEventListener('click', function () {
+        onSavedNoteClick(note.id);
+      });
+
+      pageEl.appendChild(wrapper);
+    });
+  }
+
+  // ---------------------------------------------------
+  // КЛИК ВЪРХУ ЗАПАЗЕНА БЕЛЕЖКА
+  // ---------------------------------------------------
+  function onSavedNoteClick(noteId) {
+    selectedSavedNote = savedNotes.find(function (n) { return n.id === noteId; }) || null;
+    if (!selectedSavedNote) { return; }
+
+    // Показваме бутоните за действие
+    show('btn-saved-urgent');
+    show('btn-saved-edit');
+    show('btn-saved-reposition');
+    show('btn-saved-delete');
+  }
+
+  function hideSavedNoteButtons() {
+    hide('btn-saved-urgent');
+    hide('btn-saved-edit');
+    hide('btn-saved-reposition');
+    hide('btn-saved-delete');
+    selectedSavedNote = null;
+  }
+
+  window.savedNoteToggleUrgent = function () {
+    if (!selectedSavedNote) { return; }
+    selectedSavedNote.isUrgent = !selectedSavedNote.isUrgent;
+    showLoomLoader();
+    updateDoc(doc(db, 'users', currentUser.uid, 'notes', selectedSavedNote.id), {
+      isUrgent: selectedSavedNote.isUrgent
+    }).finally(function () {
+      hideLoomLoader();
+      renderSavedNotes();
+      hideSavedNoteButtons();
+    });
+  };
+
+  window.savedNoteEdit = function () {
+    if (!selectedSavedNote) { return; }
+    // Зареждаме бележката в редактора
+    activeNote.id           = selectedSavedNote.id;
+    activeNote.type         = selectedSavedNote.type;
+    activeNote.color        = selectedSavedNote.color;
+    activeNote.isUrgent     = selectedSavedNote.isUrgent;
+    activeNote.prevColor    = selectedSavedNote.color;
+    activeNote.fontIndex    = selectedSavedNote.fontIndex    || 0;
+    activeNote.fontSizeIndex= selectedSavedNote.fontSizeIndex|| 0;
+    activeNote.isBold       = selectedSavedNote.isBold       || false;
+    activeNote.typeLocked   = true;
+    activeNote.posX         = selectedSavedNote.posX;
+    activeNote.posY         = selectedSavedNote.posY;
+    activeNote.width        = selectedSavedNote.width;
+    activeNote.height       = selectedSavedNote.height;
+    activeNote.rotation     = selectedSavedNote.rotation || 0;
+    activeNote.canvasStrokes= JSON.parse(selectedSavedNote.canvasStrokes || '[]');
+    activeNote.canvasUndoStack = [];
+    activeNote.canvasRedoStack = [];
+
+    document.getElementById('jult-fon-layer').style.display = 'block';
+    showAttrButtons();
+    setupActiveNoteContainer();
+
+    var tf     = document.getElementById('active-note-textfield');
+    tf.innerHTML = selectedSavedNote.innerHTML || '';
+
+    var cv     = document.getElementById('active-note-canvas');
+    redrawCanvas(cv);
+
+    hideSavedNoteButtons();
+  };
+
+  window.savedNoteReposition = function () {
+    if (!selectedSavedNote) { return; }
+    // Зареждаме само позиционирането
+    activeNote.id     = selectedSavedNote.id;
+    activeNote.type   = selectedSavedNote.type;
+    activeNote.posX   = selectedSavedNote.posX;
+    activeNote.posY   = selectedSavedNote.posY;
+    activeNote.width  = selectedSavedNote.width;
+    activeNote.height = selectedSavedNote.height;
+    activeNote.rotation = selectedSavedNote.rotation || 0;
+
+    var cont = document.getElementById('active-note-container');
+    cont.style.display  = 'block';
+    cont.style.left     = activeNote.posX + 'px';
+    cont.style.top      = activeNote.posY + 'px';
+    cont.style.width    = activeNote.width + 'px';
+    cont.style.height   = activeNote.height + 'px';
+    cont.style.transform= 'rotate(' + activeNote.rotation + 'deg)';
+    updateActiveNoteImage();
+
+    var rc = document.getElementById('reshetka-container');
+    rc.style.display   = 'block';
+    rc.style.left      = activeNote.posX + 'px';
+    rc.style.top       = activeNote.posY + 'px';
+    rc.style.width     = activeNote.width + 'px';
+    rc.style.height    = activeNote.height + 'px';
+    rc.style.transform = 'rotate(' + activeNote.rotation + 'deg)';
+
+    show('btn-confirm-position');
+    hideSavedNoteButtons();
+    initReshetkaInteraction();
+  };
+
+  window.savedNoteDelete = function () {
+    if (!selectedSavedNote) { return; }
+    showLoomLoader();
+    deleteDoc(doc(db, 'users', currentUser.uid, 'notes', selectedSavedNote.id))
+      .then(function () {
+        savedNotes = savedNotes.filter(function (n) { return n.id !== selectedSavedNote.id; });
+        renderSavedNotes();
+        hideSavedNoteButtons();
+      })
+      .catch(function (err) { console.error(err); })
+      .finally(function () { hideLoomLoader(); });
+  };
+
+  // ---------------------------------------------------
+  // ПРОФИЛ МЕНЮ
+  // ---------------------------------------------------
+  window.toggleProfileMenu = function () {
+    profileMenuOpen = !profileMenuOpen;
+    if (profileMenuOpen) {
+      show('profile-menu-overlay');
+      if (isGuestMode) {
+        show('btn-guest-login-option');
+        show('btn-guest-register-option');
+        hide('btn-change-pass');
+        hide('btn-logout');
+        hide('btn-delete-profile');
+      } else {
+        hide('btn-guest-login-option');
+        hide('btn-guest-register-option');
+        show('btn-change-pass');
+        show('btn-logout');
+        show('btn-delete-profile');
+      }
+      show('btn-profile-back');
+    } else {
+      closeProfileMenu();
+    }
+  };
+
+  window.closeProfileMenu = function () {
+    profileMenuOpen = false;
+    hide('profile-menu-overlay');
+    hide('btn-change-pass');
+    hide('btn-logout');
+    hide('btn-delete-profile');
+    hide('btn-profile-back');
+    hide('btn-guest-login-option');
+    hide('btn-guest-register-option');
+    hide('delete-profile-confirm-overlay');
+    hide('btn-delete-profile-cancel');
+    hide('btn-delete-profile-confirm');
+    hide('change-pass-overlay');
+    hide('btn-change-pass-back');
+  };
+
+  window.doLogout = function () {
+    showLoomLoader();
+    signOut(auth)
+      .then(function () {
+        localStorage.removeItem('loom-session-saved');
+        closeProfileMenu();
+        showPage('screen-auth');
+      })
+      .finally(function () { hideLoomLoader(); });
+  };
+
+  window.confirmDeleteProfile = function () {
+    show('delete-profile-confirm-overlay');
+    show('btn-delete-profile-cancel');
+    show('btn-delete-profile-confirm');
+  };
+
+  window.cancelDeleteProfile = function () {
+    hide('delete-profile-confirm-overlay');
+    hide('btn-delete-profile-cancel');
+    hide('btn-delete-profile-confirm');
+  };
+
+  window.executeDeleteProfile = function () {
+    if (!currentUser) { return; }
+    showLoomLoader();
+    // Изтриваме бележките
+    var notesCol = collection(db, 'users', currentUser.uid, 'notes');
+    getDocs(notesCol)
+      .then(function (snap) {
+        var delPromises = snap.docs.map(function (d) { return deleteDoc(d.ref); });
+        return Promise.all(delPromises);
+      })
+      .then(function () {
+        return deleteDoc(doc(db, 'users', currentUser.uid));
+      })
+      .then(function () {
+        return deleteUser(currentUser);
+      })
+      .then(function () {
+        localStorage.removeItem('loom-session-saved');
+        closeProfileMenu();
+        showPage('screen-auth');
+      })
+      .catch(function (e) { console.error(e); })
+      .finally(function () { hideLoomLoader(); });
+  };
+
+  window.changePassword = function () {
+    if (!currentUser || !currentUser.email) { return; }
+    showLoomLoader();
+    // Генерираме Firebase reset линк (Frontend го изпраща директно)
+    sendPasswordResetEmail(auth, currentUser.email)
+      .then(function () {
+        // Изпращаме имейл чрез EmailJS с template_wq2piih
+        emailjs.send('service_gz5umqa', 'template_wq2piih', {
+          user_email: currentUser.email,
+          user_name:  currentUser.displayName || '',
+          reset_link: '(линкът е изпратен директно от Firebase)'
+        });
+        // Показваме "Влезте в имейла си"
+        hide('btn-change-pass');
+        hide('btn-logout');
+        hide('btn-delete-profile');
+        hide('btn-profile-back');
+        show('change-pass-overlay');
+        show('btn-change-pass-back');
+      })
+      .catch(function (e) { console.error(e); })
+      .finally(function () { hideLoomLoader(); });
+  };
+
+  window.changePasswordBack = function () {
+    hide('change-pass-overlay');
+    hide('btn-change-pass-back');
+    show('btn-change-pass');
+    show('btn-logout');
+    show('btn-delete-profile');
+    show('btn-profile-back');
+  };
+
+  window.guestGoToLogin    = function () { closeProfileMenu(); showPage('screen-login'); };
+  window.guestGoToRegister = function () { closeProfileMenu(); showPage('screen-register'); };
+
+  // ---------------------------------------------------
+  // РЕГИСТРАЦИЯ
+  // ---------------------------------------------------
+  window.doRegister = function () {
+    var email    = document.getElementById('reg-email').value.trim();
+    var username = document.getElementById('reg-username').value.trim();
+    var password = document.getElementById('reg-password').value;
+
+    if (!email || !username || password.length < 5) {
+      alert('Моля попълнете всички полета. Паролата трябва да е поне 5 символа.');
+      return;
+    }
+
+    showLoomLoader();
+    createUserWithEmailAndPassword(auth, email, password)
+      .then(function (cred) {
+        currentUser   = cred.user;
+        isGuestMode   = false;
+        // Записваме потребителско име
+        return setDoc(doc(db, 'users', cred.user.uid), { email: email, username: username });
+      })
+      .then(function () {
+        // Изпращаме приветствен имейл
+        return emailjs.send('service_gz5umqa', 'template_ycxqhdh', {
+          user_email: email,
+          user_name:  username
+        });
+      })
+      .then(function () {
+        showPage('screen-save-data');
+      })
+      .catch(function (e) { console.error(e); alert(e.message); })
+      .finally(function () { hideLoomLoader(); });
+  };
+
+  // ---------------------------------------------------
+  // ВХОД
+  // ---------------------------------------------------
+  window.doLogin = function () {
+    var emailOrUser = document.getElementById('login-email').value.trim();
+    var password    = document.getElementById('login-password').value;
+    var errorImg    = document.getElementById('login-error-msg');
+    errorImg.style.display = 'none';
+
+    showLoomLoader();
+    signInWithEmailAndPassword(auth, emailOrUser, password)
+      .then(function (cred) {
+        currentUser = cred.user;
+        isGuestMode = false;
+        showPage('screen-save-data');
+      })
+      .catch(function () {
+        errorImg.style.display = 'block';
+      })
+      .finally(function () { hideLoomLoader(); });
+  };
+
+  // ---------------------------------------------------
+  // ГОСТ ВХОД
+  // ---------------------------------------------------
+  window.guestLogin = function () {
+    showLoomLoader();
+    signInAnonymously(auth)
+      .then(function (cred) {
+        currentUser = cred.user;
+        isGuestMode = true;
+        enterMainApp();
+      })
+      .catch(function (e) { console.error(e); })
+      .finally(function () { hideLoomLoader(); });
+  };
+
+  // ---------------------------------------------------
+  // ЗАПАЗВАНЕ НА ДАННИ НА УСТРОЙСТВОТО
+  // ---------------------------------------------------
+  window.allowSaveData = function () {
+    localStorage.setItem('loom-session-saved', 'true');
+    showPage('screen-notifications');
+  };
+
+  window.denySaveData = function () {
+    localStorage.removeItem('loom-session-saved');
+    showPage('screen-notifications');
+  };
+
+  // ---------------------------------------------------
+  // ИЗВЕСТИЯ
+  // ---------------------------------------------------
+  window.allowNotifications = function () {
+    notificationsAccepted = true;
+    if (currentUser) {
+      updateDoc(doc(db, 'users', currentUser.uid), { notificationsAccepted: true }).catch(function () {});
+    }
+    requestPushPermission();
+    enterMainApp();
+  };
+
+  window.denyNotifications = function () {
+    notificationsAccepted = false;
+    enterMainApp();
+  };
+
+  function requestPushPermission() {
+    if (!('Notification' in window)) { return; }
+    Notification.requestPermission().then(function (permission) {
+      if (permission === 'granted') {
+        getToken(messaging, { vapidKey: '' }).then(function (token) {
+          if (currentUser && token) {
+            updateDoc(doc(db, 'users', currentUser.uid), { fcmToken: token }).catch(function () {});
+          }
+        }).catch(function () {});
+      }
+    });
+  }
+
+  // ---------------------------------------------------
+  // ВЛИЗАНЕ В ГЛАВНИЯ ЕКРАН
+  // ---------------------------------------------------
+  function enterMainApp() {
+    showPage('screen-main');
+    loadSavedNotes();
+  }
+
+  // ---------------------------------------------------
+  // ЗАРЕЖДАНЕ НА БЕЛЕЖКИ ОТ FIREBASE
+  // ---------------------------------------------------
+  function loadSavedNotes() {
+    if (!currentUser) { return; }
+    showLoomLoader();
+    getDocs(collection(db, 'users', currentUser.uid, 'notes'))
+      .then(function (snap) {
+        savedNotes = snap.docs.map(function (d) {
+          var data  = d.data();
+          data.id   = d.id;
+          return data;
+        });
+        renderSavedNotes();
+      })
+      .catch(function (e) { console.error(e); })
+      .finally(function () { hideLoomLoader(); });
+  }
+
+  // ---------------------------------------------------
+  // PUSH ИЗВЕСТИЕ ЗА СПЕШНА БЕЛЕЖКА
+  // ---------------------------------------------------
+  function sendPushNotification(noteId, noteData) {
+    if (!notificationsAccepted) { return; }
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification('LOOM — Спешна бележка', {
+        body: (noteData.innerHTML || '').replace(/<[^>]+>/g, '').substring(0, 100),
+        icon: 'decorativen_loom_viziq.png'
+      });
+    }
+  }
+
+  // ---------------------------------------------------
+  // onMessage — Firebase Cloud Messaging (активна сесия)
+  // ---------------------------------------------------
+  onMessage(messaging, function (payload) {
+    if (notificationsAccepted) {
+      new Notification(payload.notification.title, {
+        body: payload.notification.body,
+        icon: 'decorativen_loom_viziq.png'
+      });
+    }
+  });
+
+  // ---------------------------------------------------
+  // АВТОМАТИЧНО ЗАПАЗВАНЕ ПРИ ЗАТВАРЯНЕ
+  // ---------------------------------------------------
+  window.addEventListener('beforeunload', function () {
+    if (isNoteEditorOpen()) {
+      saveCurrentNote(false);
+    }
+  });
+
+  // ---------------------------------------------------
+  // onAuthStateChanged — автоматичен вход при refresh
+  // ---------------------------------------------------
+  showLoomLoader();
+  onAuthStateChanged(auth, function (user) {
+    hideLoomLoader();
+    if (user) {
+      currentUser = user;
+      isGuestMode = user.isAnonymous;
+      // Проверяваме дали е запазена сесия
+      var sessionSaved = localStorage.getItem('loom-session-saved');
+      if (sessionSaved === 'true') {
+        // Директно в главния екран
+        getDoc(doc(db, 'users', user.uid))
+          .then(function (snap) {
+            if (snap.exists()) {
+              notificationsAccepted = snap.data().notificationsAccepted || false;
+            }
+          })
+          .finally(function () {
+            enterMainApp();
+          });
+      } else {
+        // Иначе — показваме auth екрана
+        showPage('screen-auth');
+      }
+    } else {
+      showPage('screen-auth');
+    }
+  });
+
+  // ---------------------------------------------------
+  // ИНИЦИАЛИЗАЦИЯ НА CANVAS DRAWING
+  // ---------------------------------------------------
+  initCanvasDrawing();
+
+  // ---------------------------------------------------
+  // ТЕКСТОВО ПОЛЕ — заключване на вида при писане
+  // ---------------------------------------------------
+  document.getElementById('active-note-textfield').addEventListener('input', function () {
+    if (!activeNote.typeLocked) {
+      activeNote.typeLocked = true;
+    }
+  });
+
+</script>
+
+</body>
+</html>

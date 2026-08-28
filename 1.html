@@ -1,0 +1,1467 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LOOM – 1.html</title>
+
+  <!-- EmailJS SDK -->
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+
+  <style>
+    /* ─── RESET ─────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #000; }
+
+    /* ─── SCALE WRAPPER  1080×1920 ──────────────────────── */
+    #app-wrapper {
+      position: fixed;
+      top: 0; left: 0;
+      width: 1080px;
+      height: 1920px;
+      transform-origin: top left;
+      overflow: hidden;
+    }
+
+    /* ─── LOADER ─────────────────────────────────────────── */
+    #loom-global-loader {
+      display: none;
+      position: absolute;
+      top: 0; left: 0;
+      width: 1080px; height: 1920px;
+      background: rgba(0,0,0,0.55);
+      z-index: 99999;
+      pointer-events: all;
+      align-items: center;
+      justify-content: center;
+    }
+    #loom-global-loader img { width: 220px; height: auto; }
+
+    /* ─── PAGES LAYER ────────────────────────────────────── */
+    #pages-layer {
+      position: absolute;
+      top: 0; left: 0;
+      width: 1080px; height: 1920px;
+      overflow: hidden;
+    }
+    /* Carousel track */
+    #carousel-track {
+      position: absolute;
+      top: 0; left: 0;
+      width: calc(1080px * 5);
+      height: 1920px;
+      display: flex;
+      transition: transform 0.35s cubic-bezier(0.25,0.46,0.45,0.94);
+      will-change: transform;
+      touch-action: none;
+    }
+    .carousel-slide {
+      width: 1080px; height: 1920px;
+      flex-shrink: 0;
+      position: relative;
+      overflow: hidden;
+    }
+    .carousel-slide img.page-bg {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      display: block;
+      user-select: none;
+      pointer-events: none;
+    }
+
+    /* ─── PERSISTENT UI LAYER ────────────────────────────── */
+    #ui-layer {
+      position: absolute;
+      top: 0; left: 0;
+      width: 1080px; height: 1920px;
+      pointer-events: none;
+    }
+    #ui-layer > * { pointer-events: all; }
+
+    /* Profile button – always visible */
+    #btn-profil {
+      position: absolute;
+      top: 0; left: 0;
+      width: auto; height: auto;
+      cursor: pointer;
+      z-index: 500;
+    }
+    /* New note button – always visible during main work */
+    #btn-nova-belejka {
+      position: absolute;
+      cursor: pointer;
+      z-index: 500;
+      /* exact position from design – set via inline style below */
+    }
+
+    /* ─── YELLOW BACKGROUND (note creation) ─────────────── */
+    #jult-fon {
+      display: none;
+      position: absolute;
+      top: 0; left: 0;
+      width: 1080px; height: 1920px;
+      z-index: 600;
+      cursor: pointer;
+    }
+    #jult-fon img { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+
+    /* ─── NOTE ATTRIBUTE BUTTONS ─────────────────────────── */
+    #note-attr-bar {
+      display: none;
+      position: absolute;
+      top: 0; left: 0;
+      width: 1080px; height: 1920px;
+      pointer-events: none;
+      z-index: 700;
+    }
+    #note-attr-bar img { position: absolute; cursor: pointer; pointer-events: all; }
+
+    /* ─── NOTES CONTAINER (inside jult-fon layer) ────────── */
+    #notes-container {
+      display: none;
+      position: absolute;
+      top: 0; left: 0;
+      width: 1080px; height: 1920px;
+      pointer-events: none;
+      z-index: 650;
+    }
+
+    /* ─── SINGLE NOTE WRAPPER ────────────────────────────── */
+    .note-wrapper {
+      position: absolute;
+      pointer-events: all;
+      touch-action: none;
+    }
+    .note-img {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      object-fit: fill;
+      user-select: none;
+      pointer-events: none;
+    }
+    /* contenteditable field on top of note image */
+    .note-text {
+      position: absolute;
+      top: 12%; left: 8%;
+      width: 84%; height: 78%;
+      background: transparent;
+      border: none;
+      outline: none;
+      overflow: hidden;
+      word-break: break-word;
+      font-family: 'SofiaSansExtraCondensed-Regular', sans-serif;
+      font-size: 18px;
+      color: #222;
+      resize: none;
+      pointer-events: all;
+      z-index: 2;
+      cursor: text;
+    }
+    /* Canvas on note */
+    .note-canvas {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none; /* toggled by brush mode */
+      z-index: 3;
+      background: transparent;
+    }
+
+    /* ─── COLOUR PALETTE ─────────────────────────────────── */
+    #palette-layer {
+      display: none;
+      position: absolute;
+      top: 0; left: 0;
+      width: 1080px; height: 1920px;
+      pointer-events: none;
+      z-index: 800;
+    }
+    #palette-layer img { position: absolute; cursor: pointer; pointer-events: all; }
+
+    /* ─── BRUSH PALETTE ──────────────────────────────────── */
+    #brush-layer {
+      display: none;
+      position: absolute;
+      top: 0; left: 0;
+      width: 1080px; height: 1920px;
+      pointer-events: none;
+      z-index: 800;
+    }
+    #brush-layer img { position: absolute; cursor: pointer; pointer-events: all; }
+
+    /* ─── GRID / RESHETKA ────────────────────────────────── */
+    #reshetka-layer {
+      display: none;
+      position: absolute;
+      top: 0; left: 0;
+      width: 1080px; height: 1920px;
+      pointer-events: none;
+      z-index: 900;
+    }
+    #reshetka-img {
+      position: absolute;
+      cursor: move;
+      pointer-events: all;
+    }
+    #btn-otmetka-reshetka {
+      position: absolute;
+      cursor: pointer;
+      pointer-events: all;
+    }
+
+    /* ─── POST-SAVE NOTE ACTIONS ─────────────────────────── */
+    .saved-note-actions {
+      display: none;
+      position: absolute;
+      top: 0; left: 0;
+      width: 1080px; height: 1920px;
+      pointer-events: none;
+      z-index: 950;
+    }
+    .saved-note-actions img { position: absolute; cursor: pointer; pointer-events: all; }
+
+    /* ─── PROFILE PANEL ──────────────────────────────────── */
+    #profile-panel {
+      display: none;
+      position: absolute;
+      top: 0; left: 0;
+      width: 1080px; height: 1920px;
+      pointer-events: none;
+      z-index: 1000;
+    }
+    #profile-panel img { position: absolute; cursor: pointer; pointer-events: all; }
+
+    /* ─── NOTIFICATION PERMISSION (inline, shown on speshni) */
+    #notif-permission-layer {
+      display: none;
+      position: absolute;
+      top: 0; left: 0;
+      width: 1080px; height: 1920px;
+      pointer-events: none;
+      z-index: 1100;
+    }
+    #notif-permission-layer img { position: absolute; cursor: pointer; pointer-events: all; }
+
+    /* ─── FONT FACES ─────────────────────────────────────── */
+    @font-face {
+      font-family: 'SofiaSansExtraCondensed-Regular';
+      src: url('SofiaSansExtraCondensed-Regular.ttf') format('truetype');
+      font-weight: normal;
+    }
+    @font-face {
+      font-family: 'SofiaSansExtraCondensed-Bold';
+      src: url('SofiaSansExtraCondensed-Bold.ttf') format('truetype');
+      font-weight: bold;
+    }
+    @font-face {
+      font-family: 'RobotoSlab-Regular';
+      src: url('RobotoSlab-Regular.ttf') format('truetype');
+      font-weight: normal;
+    }
+    @font-face {
+      font-family: 'RobotoSlab-Bold';
+      src: url('RobotoSlab-Bold.ttf') format('truetype');
+      font-weight: bold;
+    }
+    @font-face {
+      font-family: 'ShantellSans-Regular';
+      src: url('ShantellSans-Regular.ttf') format('truetype');
+      font-weight: normal;
+    }
+    @font-face {
+      font-family: 'ShantellSans-Bold';
+      src: url('ShantellSans-Bold.ttf') format('truetype');
+      font-weight: bold;
+    }
+    @font-face {
+      font-family: 'Unbounded-Regular';
+      src: url('Unbounded-Regular.ttf') format('truetype');
+      font-weight: normal;
+    }
+    @font-face {
+      font-family: 'Unbounded-Bold';
+      src: url('Unbounded-Bold.ttf') format('truetype');
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+<div id="app-wrapper">
+
+  <!-- ═══════════════════════════════════════════════════════
+       GLOBAL LOADER
+  ══════════════════════════════════════════════════════════ -->
+  <div id="loom-global-loader" style="display:none;align-items:center;justify-content:center;">
+    <img src="Loom_anima.gif" alt="Loading…" />
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       PAGES CAROUSEL  S1–S5
+  ══════════════════════════════════════════════════════════ -->
+  <div id="pages-layer">
+    <div id="carousel-track">
+      <div class="carousel-slide" data-index="0"><img class="page-bg" src="S1.png" alt="S1" /></div>
+      <div class="carousel-slide" data-index="1"><img class="page-bg" src="S2.png" alt="S2" /></div>
+      <div class="carousel-slide" data-index="2"><img class="page-bg" src="S3.png" alt="S3" /></div>
+      <div class="carousel-slide" data-index="3"><img class="page-bg" src="S4.png" alt="S4" /></div>
+      <div class="carousel-slide" data-index="4"><img class="page-bg" src="S5.png" alt="S5" /></div>
+    </div>
+
+    <!-- Saved notes (one per page slot) -->
+    <div id="saved-notes-host" style="position:absolute;top:0;left:0;width:1080px;height:1920px;pointer-events:none;z-index:200;"></div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       PERSISTENT UI
+  ══════════════════════════════════════════════════════════ -->
+  <div id="ui-layer">
+    <!-- Profile button (always on top) -->
+    <img id="btn-profil" src="buton_loom_za_profil.png" alt="Профил" />
+    <!-- New note button -->
+    <img id="btn-nova-belejka" src="buton_nova_belejka.png" alt="Нова бележка" />
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       YELLOW BACKGROUND  (note creation mode)
+  ══════════════════════════════════════════════════════════ -->
+  <div id="jult-fon">
+    <img src="jult_fon.png" alt="Жълт фон" />
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       NOTE ATTRIBUTE BUTTONS  (shown with jult-fon)
+  ══════════════════════════════════════════════════════════ -->
+  <div id="note-attr-bar">
+    <img id="btn-bold"     src="buton_atributi_bold_1.png"       alt="Bold" />
+    <img id="btn-palitra"  src="buton_atributi_palitra_2.png"    alt="Палитра" />
+    <img id="btn-font"     src="buton_atributi_font_3.png"       alt="Шрифт" />
+    <img id="btn-tittle"   src="buton_atributi_tittle_4.png"     alt="Размер" />
+    <img id="btn-strelka"  src="buton_atributi_strelka_5.png"    alt="Наместване" />
+    <img id="btn-speshni"  src="buton_atributi_speshni_6.png"    alt="Спешна" />
+    <img id="btn-chetka"   src="buton_atributi_chetka_7.png"     alt="Четка" />
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       ACTIVE NOTE  (one note shown at a time during creation)
+  ══════════════════════════════════════════════════════════ -->
+  <div id="notes-container">
+    <!-- Note wrapper is created dynamically in JS -->
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       COLOUR PALETTE
+  ══════════════════════════════════════════════════════════ -->
+  <div id="palette-layer">
+    <img id="osnova-palitra"   src="osnova_palitra_csvqt_belejka.png" alt="" />
+    <img id="pal-bql"          src="bql_csvqt_palitra.png"             alt="Бяло" />
+    <img id="pal-jult"         src="jult_csvqt_palitra.png"            alt="Жълто" />
+    <img id="pal-rozov"        src="rozov_csvqt_palitra.png"           alt="Розово" />
+    <img id="pal-sinio"        src="sinio_csvqt_palitra.png"           alt="Синьо" />
+    <img id="pal-tumno"        src="tumno_sinio_csvqt_palitra.png"     alt="Тъмно синьо" />
+    <img id="pal-kafqvo"       src="kafqvo_csvqt_palitra.png"          alt="Кафяво" />
+    <img id="pal-zeleno"       src="zeleno_csvqt_palitra.png"          alt="Зелено" />
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       BRUSH PALETTE
+  ══════════════════════════════════════════════════════════ -->
+  <div id="brush-layer">
+    <img id="osnova-chetka"         src="osnova_chetka_palitra_csvetove.png"              alt="" />
+    <!-- Brush colours -->
+    <img id="bc-bql"                src="chetka_palitra_bql.png"                          alt="Бяла четка" />
+    <img id="bc-jult"               src="chetka_palitra_jult.png"                         alt="Жълта четка" />
+    <img id="bc-rozovo"             src="chetka_palitra_rozovo.png"                       alt="Розова четка" />
+    <img id="bc-sinio"              src="chetka_palitra_sinio.png"                        alt="Синя четка" />
+    <img id="bc-tumno"              src="chetka_palitra_tumno_sinio.png"                  alt="Тъмносиня четка" />
+    <img id="bc-kafqvo"             src="chetka_palitra_kafqvo.png"                       alt="Кафява четка" />
+    <img id="bc-zeleno"             src="chetka_palitra_zeleno.png"                       alt="Зелена четка" />
+    <img id="bc-cherno"             src="chetka_palitra_cherno.png"                       alt="Черна четка" />
+    <!-- Brush sizes -->
+    <img id="bs-1"                  src="chetka_golemina_1.png"                           alt="2px" />
+    <img id="bs-2"                  src="chetka_golemina_2.png"                           alt="4px" />
+    <img id="bs-3"                  src="chetka_golemina_3.png"                           alt="8px" />
+    <img id="bs-4"                  src="chetka_golemina_4.png"                           alt="12px" />
+    <img id="bs-5"                  src="chetka_golemina_5.png"                           alt="16px" />
+    <!-- Undo/Redo -->
+    <img id="btn-undo"              src="buton_palitra_strelka_vrushtane_na_nazad.png"    alt="Undo" />
+    <img id="btn-redo"              src="buton_palitra_strelka_otmqna_na_vrushtane_na_nazad.png" alt="Redo" />
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       GRID / RESHETKA  (positioning mode)
+  ══════════════════════════════════════════════════════════ -->
+  <div id="reshetka-layer">
+    <img id="reshetka-img"       src="reshetka.png"             alt="Решетка" />
+    <img id="btn-otmetka-reshetka" src="buton_otmetka_reshetka.png" alt="Запази позиция" />
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       NOTIFICATION PERMISSION LAYER  (speshni)
+  ══════════════════════════════════════════════════════════ -->
+  <div id="notif-permission-layer">
+    <img id="osnova-notif-speshni"  src="osnova_izvestie_atributi_speshni_belejki.png" alt="" />
+    <img id="btn-notif-otkaji"      src="buton_izvestie_atributi_otkaji_speshni.png"   alt="Откажи известия" />
+    <img id="btn-notif-priemi"      src="buton_izvestie_atributi_priemi_speshni.png"   alt="Приеми известия" />
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       PROFILE PANEL
+  ══════════════════════════════════════════════════════════ -->
+  <div id="profile-panel">
+    <img id="osnova-profil"          src="osnova_profil_nastroiki.png"                                      alt="" />
+    <img id="btn-smqna-parola"       src="buton_smqna_na_parola_potrebitelsko_ime_profil_nastroiki.png"     alt="Смяна парола" />
+    <img id="btn-izhod"              src="buton_izhod_profil_nastroiki.png"                                 alt="Изход" />
+    <img id="btn-iztrivane-profil"   src="buton_iztrivane_na_profila_profil_nastroiki.png"                  alt="Изтриване профил" />
+    <img id="btn-vrushtane"          src="buton_za_vrushtane_nazad.png"                                     alt="Назад" />
+  </div>
+
+</div><!-- /#app-wrapper -->
+
+
+<!-- ═══════════════════════════════════════════════════════
+     FIREBASE  (module)
+════════════════════════════════════════════════════════ -->
+<script type="module">
+import { initializeApp }          from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
+import { getAuth,
+         signInAnonymously,
+         onAuthStateChanged }     from "https://www.gstatic.com/firebasejs/12.17.1/firebase-auth.js";
+import { getFirestore,
+         collection,
+         addDoc,
+         updateDoc,
+         deleteDoc,
+         doc,
+         getDocs,
+         query,
+         where,
+         serverTimestamp }        from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
+import { getMessaging,
+         getToken,
+         onMessage }             from "https://www.gstatic.com/firebasejs/12.17.1/firebase-messaging.js";
+import { getAnalytics }          from "https://www.gstatic.com/firebasejs/12.17.1/firebase-analytics.js";
+
+const firebaseConfig = {
+  apiKey:            "AIzaSyBuvj_grP4GZ9T5GuQCLo4dx7KehZIBgSw",
+  authDomain:        "loom-e0b46.firebaseapp.com",
+  projectId:         "loom-e0b46",
+  storageBucket:     "loom-e0b46.firebasestorage.app",
+  messagingSenderId: "813806858100",
+  appId:             "1:813806858100:web:6c642ffa831b1713d60621",
+  measurementId:     "G-1ZN47R60LH"
+};
+
+const app       = initializeApp(firebaseConfig);
+const auth      = getAuth(app);
+const db        = getFirestore(app);
+const messaging = getMessaging(app);
+const analytics = getAnalytics(app);
+
+/* ─── EmailJS init ─────────────────────────────────────── */
+emailjs.init("UMm5X0he_bMYDZPpG");
+
+/* ═══════════════════════════════════════════════════════════
+   GLOBAL LOADER helpers
+══════════════════════════════════════════════════════════ */
+const loaderEl = document.getElementById('loom-global-loader');
+window.showLoomLoader = () => { loaderEl.style.display = 'flex'; };
+window.hideLoomLoader = () => { loaderEl.style.display = 'none'; };
+
+/* ═══════════════════════════════════════════════════════════
+   SCALE  1080×1920 → viewport
+══════════════════════════════════════════════════════════ */
+function applyScale() {
+  const wrapper = document.getElementById('app-wrapper');
+  const scaleX = window.innerWidth  / 1080;
+  const scaleY = window.innerHeight / 1920;
+  // Pin to top & bottom → use scaleY; horizontal center
+  const scale = scaleY;
+  const offsetX = (window.innerWidth - 1080 * scale) / 2;
+  wrapper.style.transform = `translate(${offsetX}px, 0) scale(${scale})`;
+}
+applyScale();
+window.addEventListener('resize', applyScale);
+
+/* ═══════════════════════════════════════════════════════════
+   CAROUSEL  S1–S5  (cyclic, swipe + arrow keys)
+══════════════════════════════════════════════════════════ */
+const TOTAL_PAGES = 5;
+let currentPage  = 0;          // 0-based
+let carouselLocked = false;    // locked while note edit is active
+
+const track = document.getElementById('carousel-track');
+
+function goToPage(idx, animate = true) {
+  if (carouselLocked) return;
+  idx = ((idx % TOTAL_PAGES) + TOTAL_PAGES) % TOTAL_PAGES;
+  currentPage = idx;
+  track.style.transition = animate ? 'transform 0.35s cubic-bezier(0.25,0.46,0.45,0.94)' : 'none';
+  track.style.transform  = `translateX(${-1080 * idx}px)`;
+  repositionSavedNotes();
+}
+
+/* Touch swipe on carousel */
+let touchStartX = null;
+let touchStartY = null;
+document.getElementById('pages-layer').addEventListener('touchstart', e => {
+  touchStartX = e.touches[0].clientX;
+  touchStartY = e.touches[0].clientY;
+}, { passive: true });
+document.getElementById('pages-layer').addEventListener('touchend', e => {
+  if (touchStartX === null) return;
+  const dx = e.changedTouches[0].clientX - touchStartX;
+  const dy = e.changedTouches[0].clientY - touchStartY;
+  if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) {
+    goToPage(dx < 0 ? currentPage + 1 : currentPage - 1);
+  }
+  touchStartX = touchStartY = null;
+});
+
+/* Mouse drag on carousel */
+let mouseStartX = null;
+document.getElementById('pages-layer').addEventListener('mousedown', e => { mouseStartX = e.clientX; });
+document.getElementById('pages-layer').addEventListener('mouseup', e => {
+  if (mouseStartX === null) return;
+  const dx = e.clientX - mouseStartX;
+  if (Math.abs(dx) > 40) goToPage(dx < 0 ? currentPage + 1 : currentPage - 1);
+  mouseStartX = null;
+});
+
+/* Arrow keys */
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') goToPage(currentPage + 1);
+  if (e.key === 'ArrowLeft')  goToPage(currentPage - 1);
+});
+
+/* ═══════════════════════════════════════════════════════════
+   NOTE TYPES  (1–4) with sizes & positions (design coords)
+══════════════════════════════════════════════════════════ */
+const NOTE_TYPES = {
+  1: { w: 636, h: 450, left: 219, top: 631, rotate: 0   },
+  2: { w: 637, h: 552, left: 212, top: 669, rotate: 0   },
+  3: { w: 542, h: 490, left: 284, top: 744, rotate: 2   },
+  4: { w: 653, h: 511, left: 202, top: 635, rotate: 0   }
+};
+const NOTE_OFFSET_X = -60; // 60px left of centre
+const COLOURS = ['bqlo','julto','rozovo','sinio','tumno_sinio','kafqvo','zeleno','speshna'];
+const COLOUR_MAP = {
+  1: { bqlo:'bqla', julto:'julta', rozovo:'rozovo', sinio:'sinio', tumno_sinio:'tumno_sinio', kafqvo:'kafqvo', zeleno:'zelena', speshna:'speshna' },
+  2: { bqlo:'bqlo', julto:'julta', rozovo:'rozovo', sinio:'sinio', tumno_sinio:'tumno_sinio', kafqvo:'kafqvo', zeleno:'zeleno', speshna:'speshna' },
+  3: { bqlo:'bqlo', julto:'julto', rozovo:'rozovo', sinio:'sinio', tumno_sinio:'tumno_sinio', kafqvo:'kafqvo', zeleno:'zeleno', speshna:'speshna' },
+  4: { bqlo:'bqlo', julto:'julto', rozovo:'rozovo', sinio:'sinio', tumno_sinio:'tumno_sinio', kafqvo:'kafqvo', zeleno:'zeleno', speshna:'speshna' }
+};
+
+function noteImgName(typeNum, colour) {
+  const suffix = COLOUR_MAP[typeNum][colour] || 'bqlo';
+  return `${typeNum}belejka_${suffix}.png`;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ACTIVE NOTE STATE
+══════════════════════════════════════════════════════════ */
+const FONTS_REG  = ['SofiaSansExtraCondensed-Regular','RobotoSlab-Regular','ShantellSans-Regular','Unbounded-Regular'];
+const FONTS_BOLD = ['SofiaSansExtraCondensed-Bold',   'RobotoSlab-Bold',   'ShantellSans-Bold',   'Unbounded-Bold'];
+const FONT_SIZES = [18, 24, 32];
+
+let activeNote = {
+  open:        false,
+  typeIdx:     3,           // 0-based → type 4 by default
+  colour:      'bqlo',
+  prevColour:  'bqlo',      // before speshna
+  isSpeshna:   false,
+  locked:      false,       // locked when text/draw starts
+  fontIdx:     0,           // FONTS_REG index
+  isBold:      false,
+  sizeIdx:     0,           // FONT_SIZES index
+  brushMode:   false,
+  brushColour: '#000000',
+  brushSize:   4,
+  undoStack:   [],
+  redoStack:   [],
+  wrapper:     null,
+  img:         null,
+  text:        null,
+  canvas:      null,
+  ctx:         null,
+  fireId:      null,        // Firestore doc id (after save)
+  pageIndex:   0            // which page it belongs to
+};
+
+/* ─── Note type carousel inside creation mode ──────────── */
+let ntTouchStartX = null;
+let ntTouchStartY = null;
+
+function currentNoteTypes() {
+  return [3, 2, 1, 0]; // mapping of swipe positions (4 is default)
+}
+
+const noteSwipeOrder = [3, 2, 1, 0]; // index into NOTE_TYPES keys (4,3,2,1)
+const noteSwipeKeys  = [4, 3, 2, 1];
+
+let noteSwipePos = 0; // 0 → type 4 (default)
+
+function selectNoteType(pos) {
+  if (activeNote.locked) return;
+  noteSwipePos = ((pos % 4) + 4) % 4;
+  const typeNum = noteSwipeKeys[noteSwipePos];
+  activeNote.typeIdx = typeNum - 1;
+  updateNoteWrapperGeometry();
+  updateNoteImage();
+}
+
+/* ═══════════════════════════════════════════════════════════
+   BUILD ACTIVE NOTE DOM
+══════════════════════════════════════════════════════════ */
+function buildNoteDOM() {
+  const container = document.getElementById('notes-container');
+  container.innerHTML = '';
+
+  const w = document.createElement('div');
+  w.className = 'note-wrapper';
+  w.id = 'active-note-wrapper';
+
+  const img = document.createElement('img');
+  img.className = 'note-img';
+  img.id = 'active-note-img';
+
+  const text = document.createElement('div');
+  text.className  = 'note-text';
+  text.id         = 'active-note-text';
+  text.contentEditable = 'true';
+  text.setAttribute('data-placeholder','');
+
+  const canvas = document.createElement('canvas');
+  canvas.className = 'note-canvas';
+  canvas.id = 'active-note-canvas';
+
+  w.appendChild(img);
+  w.appendChild(text);
+  w.appendChild(canvas);
+  container.appendChild(w);
+
+  activeNote.wrapper = w;
+  activeNote.img     = img;
+  activeNote.text    = text;
+  activeNote.canvas  = canvas;
+  activeNote.ctx     = null; // set after geometry
+
+  updateNoteWrapperGeometry();
+  updateNoteImage();
+  initNoteCanvas();
+  attachNoteTextEvents();
+  attachNoteSwipeEvents();
+}
+
+function updateNoteWrapperGeometry() {
+  const t = NOTE_TYPES[noteSwipeKeys[noteSwipePos]];
+  const centre = 1080 / 2;
+  const left = centre - t.w / 2 + NOTE_OFFSET_X;
+  const w = activeNote.wrapper;
+  w.style.width    = t.w + 'px';
+  w.style.height   = t.h + 'px';
+  w.style.left     = left + 'px';
+  w.style.top      = t.top + 'px';
+  w.style.transform= t.rotate ? `rotate(${t.rotate}deg)` : '';
+
+  // Sync canvas size
+  if (activeNote.canvas) {
+    activeNote.canvas.width  = t.w;
+    activeNote.canvas.height = t.h;
+    redrawCanvas();
+  }
+}
+
+function updateNoteImage() {
+  const typeNum = noteSwipeKeys[noteSwipePos];
+  activeNote.img.src = noteImgName(typeNum, activeNote.colour);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   CANVAS DRAWING
+══════════════════════════════════════════════════════════ */
+function initNoteCanvas() {
+  const c = activeNote.canvas;
+  const ctx = c.getContext('2d');
+  ctx.lineCap  = 'round';
+  ctx.lineJoin = 'round';
+  activeNote.ctx = ctx;
+  activeNote.undoStack = [];
+  activeNote.redoStack = [];
+
+  let drawing = false;
+  let lastX = 0, lastY = 0;
+
+  function getPos(e) {
+    const rect = c.getBoundingClientRect();
+    const scaleX = c.width  / rect.width;
+    const scaleY = c.height / rect.height;
+    let cx, cy;
+    if (e.touches) {
+      cx = (e.touches[0].clientX - rect.left) * scaleX;
+      cy = (e.touches[0].clientY - rect.top)  * scaleY;
+    } else {
+      cx = (e.clientX - rect.left) * scaleX;
+      cy = (e.clientY - rect.top)  * scaleY;
+    }
+    return [cx, cy];
+  }
+
+  function startDraw(e) {
+    if (!activeNote.brushMode) return;
+    e.preventDefault();
+    drawing = true;
+    [lastX, lastY] = getPos(e);
+    // Lock note type on first stroke
+    if (!activeNote.locked) activeNote.locked = true;
+    saveCanvasState();
+    ctx.beginPath();
+    ctx.moveTo(lastX, lastY);
+  }
+  function draw(e) {
+    if (!drawing || !activeNote.brushMode) return;
+    e.preventDefault();
+    const [x, y] = getPos(e);
+    ctx.strokeStyle = activeNote.brushColour;
+    ctx.lineWidth   = activeNote.brushSize;
+    ctx.lineTo(x, y);
+    ctx.stroke();
+    lastX = x; lastY = y;
+  }
+  function endDraw() { drawing = false; }
+
+  c.addEventListener('mousedown',  startDraw);
+  c.addEventListener('mousemove',  draw);
+  c.addEventListener('mouseup',    endDraw);
+  c.addEventListener('touchstart', startDraw, { passive: false });
+  c.addEventListener('touchmove',  draw,      { passive: false });
+  c.addEventListener('touchend',   endDraw);
+}
+
+function saveCanvasState() {
+  const dataURL = activeNote.canvas.toDataURL();
+  activeNote.undoStack.push(dataURL);
+  activeNote.redoStack = [];
+}
+
+function redrawCanvas() {
+  if (!activeNote.ctx) return;
+  const stack = activeNote.undoStack;
+  const c     = activeNote.canvas;
+  const ctx   = activeNote.ctx;
+  ctx.clearRect(0, 0, c.width, c.height);
+  if (stack.length === 0) return;
+  const img = new Image();
+  img.src = stack[stack.length - 1];
+  img.onload = () => ctx.drawImage(img, 0, 0);
+}
+
+function undoCanvas() {
+  if (activeNote.undoStack.length === 0) return;
+  const last = activeNote.undoStack.pop();
+  activeNote.redoStack.push(last);
+  redrawCanvas();
+}
+function redoCanvas() {
+  if (activeNote.redoStack.length === 0) return;
+  const state = activeNote.redoStack.pop();
+  activeNote.undoStack.push(state);
+  redrawCanvas();
+}
+
+/* ═══════════════════════════════════════════════════════════
+   NOTE TEXT EVENTS
+══════════════════════════════════════════════════════════ */
+function attachNoteTextEvents() {
+  const t = activeNote.text;
+  t.addEventListener('input', () => {
+    if (!activeNote.locked) activeNote.locked = true;
+    carouselLocked = true;
+  });
+  t.addEventListener('focus', () => {
+    if (activeNote.brushMode) return; // brush takes priority
+    activeNote.text.style.zIndex = '2';
+    activeNote.canvas.style.pointerEvents = 'none';
+  });
+}
+
+function attachNoteSwipeEvents() {
+  const w = activeNote.wrapper;
+  let tx = null;
+  w.addEventListener('touchstart', e => { tx = e.touches[0].clientX; }, { passive: true });
+  w.addEventListener('touchend', e => {
+    if (tx === null || activeNote.locked) return;
+    const dx = e.changedTouches[0].clientX - tx;
+    if (Math.abs(dx) > 40) selectNoteType(dx < 0 ? noteSwipePos + 1 : noteSwipePos - 1);
+    tx = null;
+  });
+  let mx = null;
+  w.addEventListener('mousedown', e => { mx = e.clientX; });
+  w.addEventListener('mouseup', e => {
+    if (mx === null || activeNote.locked) return;
+    const dx = e.clientX - mx;
+    if (Math.abs(dx) > 40) selectNoteType(dx < 0 ? noteSwipePos + 1 : noteSwipePos - 1);
+    mx = null;
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════
+   OPEN / CLOSE NOTE CREATION
+══════════════════════════════════════════════════════════ */
+function openNoteCreation() {
+  // Reset state
+  activeNote.open      = true;
+  activeNote.colour    = 'bqlo';
+  activeNote.prevColour= 'bqlo';
+  activeNote.isSpeshna = false;
+  activeNote.locked    = false;
+  noteSwipePos         = 0; // default type 4
+  activeNote.fontIdx   = 0;
+  activeNote.isBold    = false;
+  activeNote.sizeIdx   = 0;
+  activeNote.brushMode = false;
+  activeNote.undoStack = [];
+  activeNote.redoStack = [];
+  activeNote.fireId    = null;
+  activeNote.pageIndex = currentPage;
+
+  document.getElementById('btn-nova-belejka').style.display = 'none';
+  document.getElementById('jult-fon').style.display         = 'block';
+  document.getElementById('note-attr-bar').style.display    = 'block';
+  document.getElementById('notes-container').style.display  = 'block';
+  hidePalette();
+  hideBrush();
+  carouselLocked = true;
+
+  buildNoteDOM();
+  applyFont();
+}
+
+function closeNoteCreation() {
+  saveActiveNote();
+  document.getElementById('btn-nova-belejka').style.display = 'block';
+  document.getElementById('jult-fon').style.display         = 'none';
+  document.getElementById('note-attr-bar').style.display    = 'none';
+  document.getElementById('notes-container').style.display  = 'none';
+  hidePalette();
+  hideBrush();
+  activeNote.open = false;
+  carouselLocked  = false;
+}
+
+/* Click on yellow background closes note */
+document.getElementById('jult-fon').addEventListener('click', e => {
+  if (document.getElementById('palette-layer').style.display === 'block') {
+    hidePalette(); return;
+  }
+  if (document.getElementById('brush-layer').style.display === 'block') {
+    hideBrush(); return;
+  }
+  closeNoteCreation();
+});
+
+document.getElementById('btn-nova-belejka').addEventListener('click', openNoteCreation);
+
+/* ═══════════════════════════════════════════════════════════
+   PALETTE (colour) toggle
+══════════════════════════════════════════════════════════ */
+let paletteOpen = false;
+function showPalette() { document.getElementById('palette-layer').style.display = 'block'; paletteOpen = true; }
+function hidePalette() { document.getElementById('palette-layer').style.display = 'none';  paletteOpen = false; }
+
+document.getElementById('btn-palitra').addEventListener('click', () => {
+  paletteOpen ? hidePalette() : showPalette();
+});
+
+function applyColour(colour) {
+  if (activeNote.isSpeshna && colour !== 'speshna') {
+    activeNote.isSpeshna = false;
+  }
+  activeNote.prevColour = activeNote.colour !== 'speshna' ? activeNote.colour : activeNote.prevColour;
+  activeNote.colour = colour;
+  updateNoteImage();
+  hidePalette();
+}
+
+document.getElementById('pal-bql').addEventListener('click',    () => applyColour('bqlo'));
+document.getElementById('pal-jult').addEventListener('click',   () => applyColour('julto'));
+document.getElementById('pal-rozov').addEventListener('click',  () => applyColour('rozovo'));
+document.getElementById('pal-sinio').addEventListener('click',  () => applyColour('sinio'));
+document.getElementById('pal-tumno').addEventListener('click',  () => applyColour('tumno_sinio'));
+document.getElementById('pal-kafqvo').addEventListener('click', () => applyColour('kafqvo'));
+document.getElementById('pal-zeleno').addEventListener('click', () => applyColour('zeleno'));
+
+/* ═══════════════════════════════════════════════════════════
+   SPESHNA  button
+══════════════════════════════════════════════════════════ */
+document.getElementById('btn-speshni').addEventListener('click', () => {
+  if (!activeNote.open) return;
+
+  // Check notification permission
+  if (!notifPermGranted) {
+    showNotifPermission();
+    return;
+  }
+
+  if (activeNote.isSpeshna) {
+    // Toggle off → restore previous colour
+    activeNote.isSpeshna = false;
+    activeNote.colour    = activeNote.prevColour;
+    updateNoteImage();
+  } else {
+    activeNote.prevColour = activeNote.colour;
+    activeNote.isSpeshna  = true;
+    activeNote.colour     = 'speshna';
+    updateNoteImage();
+  }
+});
+
+/* ═══════════════════════════════════════════════════════════
+   FONT cycling
+══════════════════════════════════════════════════════════ */
+function applyFont() {
+  const sel = window.getSelection();
+  const hasSelection = sel && !sel.isCollapsed && activeNote.text.contains(sel.anchorNode);
+  const fontName = activeNote.isBold ? FONTS_BOLD[activeNote.fontIdx] : FONTS_REG[activeNote.fontIdx];
+
+  if (hasSelection) {
+    const range = sel.getRangeAt(0);
+    const span  = document.createElement('span');
+    span.style.fontFamily = fontName;
+    range.surroundContents(span);
+  } else {
+    activeNote.text.style.fontFamily = fontName;
+  }
+}
+
+document.getElementById('btn-font').addEventListener('click', () => {
+  activeNote.fontIdx = (activeNote.fontIdx + 1) % FONTS_REG.length;
+  applyFont();
+});
+
+/* ═══════════════════════════════════════════════════════════
+   BOLD
+══════════════════════════════════════════════════════════ */
+document.getElementById('btn-bold').addEventListener('click', () => {
+  activeNote.isBold = !activeNote.isBold;
+  applyFont();
+});
+
+/* ═══════════════════════════════════════════════════════════
+   FONT SIZE (tittle)
+══════════════════════════════════════════════════════════ */
+function applySize() {
+  const size = FONT_SIZES[activeNote.sizeIdx] + 'px';
+  const sel  = window.getSelection();
+  const hasSelection = sel && !sel.isCollapsed && activeNote.text.contains(sel.anchorNode);
+  if (hasSelection) {
+    const range = sel.getRangeAt(0);
+    const span  = document.createElement('span');
+    span.style.fontSize = size;
+    range.surroundContents(span);
+  } else {
+    activeNote.text.style.fontSize = size;
+  }
+}
+
+document.getElementById('btn-tittle').addEventListener('click', () => {
+  activeNote.sizeIdx = (activeNote.sizeIdx + 1) % FONT_SIZES.length;
+  applySize();
+});
+
+/* ═══════════════════════════════════════════════════════════
+   BRUSH toggle
+══════════════════════════════════════════════════════════ */
+let brushOpen = false;
+function showBrush() {
+  document.getElementById('brush-layer').style.display = 'block';
+  brushOpen = true;
+  activeNote.brushMode = true;
+  if (activeNote.canvas) {
+    activeNote.canvas.style.pointerEvents = 'all';
+    activeNote.text.style.zIndex = '1';
+  }
+}
+function hideBrush() {
+  document.getElementById('brush-layer').style.display = 'none';
+  brushOpen = false;
+  activeNote.brushMode = false;
+  if (activeNote.canvas) {
+    activeNote.canvas.style.pointerEvents = 'none';
+    activeNote.text.style.zIndex = '2';
+  }
+}
+
+document.getElementById('btn-chetka').addEventListener('click', () => {
+  brushOpen ? hideBrush() : showBrush();
+});
+
+/* Brush colours */
+const BRUSH_COLOURS = {
+  'bc-bql':    '#ffffff', 'bc-jult':  '#f9df7c', 'bc-rozovo': '#ffa7d3',
+  'bc-sinio':  '#bfe0ff', 'bc-tumno': '#4b90d2', 'bc-kafqvo': '#bd8858',
+  'bc-zeleno': '#95bb62', 'bc-cherno':'#000000'
+};
+Object.entries(BRUSH_COLOURS).forEach(([id, hex]) => {
+  document.getElementById(id).addEventListener('click', () => { activeNote.brushColour = hex; });
+});
+
+/* Brush sizes */
+const BRUSH_SIZES = { 'bs-1':2, 'bs-2':4, 'bs-3':8, 'bs-4':12, 'bs-5':16 };
+Object.entries(BRUSH_SIZES).forEach(([id, px]) => {
+  document.getElementById(id).addEventListener('click', () => { activeNote.brushSize = px; });
+});
+
+/* Undo/Redo */
+document.getElementById('btn-undo').addEventListener('click', undoCanvas);
+document.getElementById('btn-redo').addEventListener('click', redoCanvas);
+
+/* ═══════════════════════════════════════════════════════════
+   POSITIONING (reshetka)
+══════════════════════════════════════════════════════════ */
+let positioningMode = false;
+
+document.getElementById('btn-strelka').addEventListener('click', () => {
+  if (!activeNote.open) return;
+  positioningMode = true;
+  document.getElementById('jult-fon').style.display      = 'none';
+  document.getElementById('note-attr-bar').style.display = 'none';
+  hidePalette(); hideBrush();
+
+  // Show reshetka overlaid on note
+  const r = document.getElementById('reshetka-layer');
+  r.style.display = 'block';
+  syncReshetkaToNote();
+  enableDragNote();
+});
+
+document.getElementById('btn-otmetka-reshetka').addEventListener('click', () => {
+  finaliseNotePosition();
+});
+
+function syncReshetkaToNote() {
+  if (!activeNote.wrapper) return;
+  const ri = document.getElementById('reshetka-img');
+  ri.style.left   = activeNote.wrapper.style.left;
+  ri.style.top    = activeNote.wrapper.style.top;
+  ri.style.width  = activeNote.wrapper.style.width;
+  ri.style.height = activeNote.wrapper.style.height;
+
+  const ob = document.getElementById('btn-otmetka-reshetka');
+  ob.style.left = (parseInt(activeNote.wrapper.style.left) + parseInt(activeNote.wrapper.style.width) - 80) + 'px';
+  ob.style.top  = (parseInt(activeNote.wrapper.style.top)  + parseInt(activeNote.wrapper.style.height) + 10) + 'px';
+}
+
+function finaliseNotePosition() {
+  document.getElementById('reshetka-layer').style.display = 'none';
+  positioningMode = false;
+  closeNoteCreation();
+}
+
+/* Drag note with mouse/touch in positioning mode */
+function enableDragNote() {
+  const w = activeNote.wrapper;
+  let dragging = false, startX, startY, origLeft, origTop;
+
+  function onStart(cx, cy) {
+    dragging = true;
+    startX = cx; startY = cy;
+    origLeft = parseInt(w.style.left) || 0;
+    origTop  = parseInt(w.style.top)  || 0;
+  }
+  function onMove(cx, cy) {
+    if (!dragging || !positioningMode) return;
+    const nx = origLeft + (cx - startX);
+    const ny = origTop  + (cy - startY);
+    w.style.left = nx + 'px';
+    w.style.top  = ny + 'px';
+    syncReshetkaToNote();
+  }
+  function onEnd() { dragging = false; }
+
+  w.addEventListener('mousedown', e => onStart(e.clientX / getScale(), e.clientY / getScale()));
+  document.addEventListener('mousemove', e => onMove(e.clientX / getScale(), e.clientY / getScale()));
+  document.addEventListener('mouseup',   onEnd);
+
+  w.addEventListener('touchstart', e => onStart(e.touches[0].clientX / getScale(), e.touches[0].clientY / getScale()), { passive: true });
+  document.addEventListener('touchmove', e => onMove(e.touches[0].clientX / getScale(), e.touches[0].clientY / getScale()), { passive: true });
+  document.addEventListener('touchend', onEnd);
+}
+
+function getScale() {
+  return window.innerHeight / 1920;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SAVE NOTE TO FIRESTORE
+══════════════════════════════════════════════════════════ */
+async function saveActiveNote() {
+  if (!activeNote.open) return;
+
+  // Auto-position if not manually placed
+  let left = parseInt(activeNote.wrapper.style.left);
+  let top  = parseInt(activeNote.wrapper.style.top);
+
+  const canvasDataURL = activeNote.canvas ? activeNote.canvas.toDataURL() : '';
+  const noteData = {
+    typeNum:    noteSwipeKeys[noteSwipePos],
+    colour:     activeNote.colour,
+    isSpeshna:  activeNote.isSpeshna,
+    innerHTML:  activeNote.text ? activeNote.text.innerHTML : '',
+    canvasData: canvasDataURL,
+    pageIndex:  currentPage,
+    left, top,
+    width:  parseInt(activeNote.wrapper.style.width),
+    height: parseInt(activeNote.wrapper.style.height),
+    rotate: NOTE_TYPES[noteSwipeKeys[noteSwipePos]].rotate,
+    createdAt: serverTimestamp()
+  };
+
+  const user = auth.currentUser;
+  if (!user) return;
+
+  try {
+    window.showLoomLoader();
+    const colRef = collection(db, `users/${user.uid}/notes`);
+    const docRef = await addDoc(colRef, noteData);
+    activeNote.fireId = docRef.id;
+    renderSavedNote({ id: docRef.id, ...noteData });
+  } catch(e) {
+    console.error('Save error', e);
+  } finally {
+    window.hideLoomLoader();
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   RENDER SAVED NOTE on pages
+══════════════════════════════════════════════════════════ */
+function repositionSavedNotes() {
+  // Move all saved note hosts with the page offset
+  document.querySelectorAll('.saved-note-host').forEach(el => {
+    const pi = parseInt(el.dataset.page);
+    el.style.left = (pi * 1080 - currentPage * 1080) + 'px';
+  });
+}
+
+function renderSavedNote(data) {
+  const host = document.getElementById('saved-notes-host');
+
+  const w = document.createElement('div');
+  w.className     = 'note-wrapper';
+  w.dataset.id    = data.id;
+  w.dataset.page  = data.pageIndex;
+  w.classList.add('saved-note-host');
+  w.style.position  = 'absolute';
+  w.style.left      = data.left + 'px';
+  w.style.top       = data.top  + 'px';
+  w.style.width     = data.width  + 'px';
+  w.style.height    = data.height + 'px';
+  w.style.transform = data.rotate ? `rotate(${data.rotate}deg)` : '';
+  w.style.zIndex    = '10';
+  w.style.pointerEvents = 'all';
+
+  const img = document.createElement('img');
+  img.className = 'note-img';
+  img.src = noteImgName(data.typeNum, data.colour);
+
+  const text = document.createElement('div');
+  text.className   = 'note-text';
+  text.innerHTML   = data.innerHTML || '';
+  text.style.pointerEvents = 'none';
+
+  const canvas = document.createElement('canvas');
+  canvas.className = 'note-canvas';
+  canvas.width  = data.width;
+  canvas.height = data.height;
+  canvas.style.pointerEvents = 'none';
+
+  if (data.canvasData && data.canvasData !== 'data:,') {
+    const ci = new Image();
+    ci.src = data.canvasData;
+    ci.onload = () => {
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(ci, 0, 0, data.width, data.height);
+    };
+  }
+
+  w.appendChild(img); w.appendChild(text); w.appendChild(canvas);
+  host.appendChild(w);
+
+  // Click → show edit actions
+  w.addEventListener('click', () => showSavedNoteActions(w, data));
+}
+
+/* ─── Load saved notes on auth ──────────────────────────── */
+async function loadSavedNotes(uid) {
+  try {
+    window.showLoomLoader();
+    const snap = await getDocs(collection(db, `users/${uid}/notes`));
+    snap.forEach(d => renderSavedNote({ id: d.id, ...d.data() }));
+  } catch(e) { console.error(e); }
+  finally { window.hideLoomLoader(); }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SAVED NOTE ACTIONS  (edit / speshna / delete / reposition)
+══════════════════════════════════════════════════════════ */
+let actionsPanel = null;
+
+function showSavedNoteActions(noteEl, data) {
+  closeActionsPanel();
+
+  const panel = document.createElement('div');
+  panel.className = 'saved-note-actions';
+  panel.style.display = 'block';
+  panel.style.position = 'absolute';
+  panel.style.top = '0'; panel.style.left = '0';
+  panel.style.width = '1080px'; panel.style.height = '1920px';
+  panel.style.pointerEvents = 'none';
+  panel.style.zIndex = '950';
+
+  function makeBtn(src, id) {
+    const i = document.createElement('img');
+    i.src = src; i.id = id;
+    i.style.position = 'absolute';
+    i.style.cursor   = 'pointer';
+    i.style.pointerEvents = 'all';
+    return i;
+  }
+
+  const btnSpeshna = makeBtn('buton_speshna_belejka_sled_redakciq.png', 'sna-speshna');
+  const btnEdit    = makeBtn('buton_za_redakciq_na_belejkata.png',       'sna-edit');
+  const btnArrow   = makeBtn('buton_strelka_redakciq.png',               'sna-arrow');
+  const btnDelete  = makeBtn('buton_iztrivane_na_belejkata.png',         'sna-delete');
+
+  // Position relative to note (approximate)
+  const nl = parseInt(noteEl.style.left);
+  const nt = parseInt(noteEl.style.top);
+  btnSpeshna.style.left = nl + 'px'; btnSpeshna.style.top = (nt - 80) + 'px';
+  btnEdit.style.left    = (nl + 160) + 'px'; btnEdit.style.top = (nt - 80) + 'px';
+  btnArrow.style.left   = (nl + 320) + 'px'; btnArrow.style.top = (nt - 80) + 'px';
+  btnDelete.style.left  = (nl + 480) + 'px'; btnDelete.style.top = (nt - 80) + 'px';
+
+  panel.appendChild(btnSpeshna);
+  panel.appendChild(btnEdit);
+  panel.appendChild(btnArrow);
+  panel.appendChild(btnDelete);
+  document.getElementById('app-wrapper').appendChild(panel);
+  actionsPanel = panel;
+
+  /* Speshna toggle */
+  btnSpeshna.addEventListener('click', async () => {
+    const newIsSpeshna = !data.isSpeshna;
+    const newColour    = newIsSpeshna ? 'speshna' : (data.prevColour || 'bqlo');
+    const noteEl2 = document.querySelector(`.saved-note-host[data-id="${data.id}"] .note-img`);
+    if (noteEl2) noteEl2.src = noteImgName(data.typeNum, newColour);
+    try {
+      window.showLoomLoader();
+      await updateDoc(doc(db, `users/${auth.currentUser.uid}/notes/${data.id}`), {
+        isSpeshna: newIsSpeshna, colour: newColour
+      });
+    } finally { window.hideLoomLoader(); }
+    data.isSpeshna = newIsSpeshna;
+    data.colour    = newColour;
+    closeActionsPanel();
+  });
+
+  /* Delete */
+  btnDelete.addEventListener('click', async () => {
+    try {
+      window.showLoomLoader();
+      await deleteDoc(doc(db, `users/${auth.currentUser.uid}/notes/${data.id}`));
+      const el = document.querySelector(`.saved-note-host[data-id="${data.id}"]`);
+      if (el) el.remove();
+    } finally { window.hideLoomLoader(); }
+    closeActionsPanel();
+  });
+
+  /* Reposition arrow */
+  btnArrow.addEventListener('click', () => {
+    closeActionsPanel();
+    // Show reshetka on saved note for repositioning
+    const r = document.getElementById('reshetka-layer');
+    r.style.display = 'block';
+    const ri = document.getElementById('reshetka-img');
+    ri.style.left   = noteEl.style.left;
+    ri.style.top    = noteEl.style.top;
+    ri.style.width  = noteEl.style.width;
+    ri.style.height = noteEl.style.height;
+    document.getElementById('btn-otmetka-reshetka').addEventListener('click', async () => {
+      r.style.display = 'none';
+      const newLeft = parseInt(ri.style.left);
+      const newTop  = parseInt(ri.style.top);
+      noteEl.style.left = newLeft + 'px';
+      noteEl.style.top  = newTop  + 'px';
+      try {
+        window.showLoomLoader();
+        await updateDoc(doc(db, `users/${auth.currentUser.uid}/notes/${data.id}`), { left: newLeft, top: newTop });
+      } finally { window.hideLoomLoader(); }
+    }, { once: true });
+  });
+
+  /* Edit */
+  btnEdit.addEventListener('click', () => {
+    closeActionsPanel();
+    openNoteEditMode(data, noteEl);
+  });
+}
+
+function closeActionsPanel() {
+  if (actionsPanel) { actionsPanel.remove(); actionsPanel = null; }
+}
+
+function openNoteEditMode(data, noteEl) {
+  // Restore full creation UI for editing
+  noteEl.style.display = 'none';
+  activeNote.open      = true;
+  activeNote.colour    = data.colour;
+  activeNote.isSpeshna = data.isSpeshna;
+  activeNote.fireId    = data.id;
+  activeNote.locked    = true; // already has content
+  noteSwipePos = noteSwipeKeys.indexOf(data.typeNum);
+  if (noteSwipePos < 0) noteSwipePos = 0;
+
+  document.getElementById('btn-nova-belejka').style.display = 'none';
+  document.getElementById('jult-fon').style.display         = 'block';
+  document.getElementById('note-attr-bar').style.display    = 'block';
+  document.getElementById('notes-container').style.display  = 'block';
+
+  buildNoteDOM();
+  activeNote.text.innerHTML = data.innerHTML || '';
+  if (data.canvasData && data.canvasData !== 'data:,') {
+    const ci = new Image();
+    ci.src = data.canvasData;
+    ci.onload = () => {
+      activeNote.ctx.drawImage(ci, 0, 0, activeNote.canvas.width, activeNote.canvas.height);
+      activeNote.undoStack.push(activeNote.canvas.toDataURL());
+    };
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PROFILE PANEL
+══════════════════════════════════════════════════════════ */
+const profilePanel = document.getElementById('profile-panel');
+
+document.getElementById('btn-profil').addEventListener('click', () => {
+  const visible = profilePanel.style.display === 'block';
+  profilePanel.style.display = visible ? 'none' : 'block';
+});
+
+document.getElementById('btn-vrushtane').addEventListener('click', () => {
+  profilePanel.style.display = 'none';
+});
+
+document.getElementById('btn-izhod').addEventListener('click', async () => {
+  if (auth.currentUser && auth.currentUser.isAnonymous) {
+    const ok = confirm('Внимание: Ако излезете без регистрация, бележките ви няма да бъдат достъпни от друго устройство.');
+    if (!ok) return;
+  }
+  try {
+    window.showLoomLoader();
+    await auth.signOut();
+    window.location.reload();
+  } finally { window.hideLoomLoader(); }
+});
+
+document.getElementById('btn-iztrivane-profil').addEventListener('click', () => {
+  if (!confirm('Сигурни ли сте? Профилът ще бъде изтрит перманентно.')) return;
+  (async () => {
+    try {
+      window.showLoomLoader();
+      const user = auth.currentUser;
+      if (user) {
+        // Delete all notes
+        const snap = await getDocs(collection(db, `users/${user.uid}/notes`));
+        for (const d of snap.docs) await deleteDoc(d.ref);
+        await user.delete();
+      }
+      window.location.reload();
+    } finally { window.hideLoomLoader(); }
+  })();
+});
+
+document.getElementById('btn-smqna-parola').addEventListener('click', async () => {
+  const user = auth.currentUser;
+  if (!user || !user.email) return;
+  try {
+    window.showLoomLoader();
+    const { sendPasswordResetEmail } = await import("https://www.gstatic.com/firebasejs/12.17.1/firebase-auth.js");
+    await sendPasswordResetEmail(auth, user.email);
+    await emailjs.send('service_gz5umqa','template_wq2piih',{
+      user_email: user.email,
+      reset_link: 'https://loom-e0b46.firebaseapp.com/__/auth/action'
+    });
+    alert('Имейл за възстановяване изпратен!');
+  } catch(e) { console.error(e); }
+  finally { window.hideLoomLoader(); }
+});
+
+/* ═══════════════════════════════════════════════════════════
+   NOTIFICATION PERMISSION
+══════════════════════════════════════════════════════════ */
+let notifPermGranted = localStorage.getItem('loom_notif') === 'granted';
+
+function showNotifPermission() {
+  document.getElementById('notif-permission-layer').style.display = 'block';
+}
+
+document.getElementById('btn-notif-priemi').addEventListener('click', async () => {
+  try {
+    const token = await getToken(messaging, { vapidKey: 'YOUR_VAPID_KEY' });
+    console.log('FCM token', token);
+  } catch(e) { console.warn('FCM token error', e); }
+  notifPermGranted = true;
+  localStorage.setItem('loom_notif','granted');
+  document.getElementById('notif-permission-layer').style.display = 'none';
+  // Retry speshna if queued
+});
+
+document.getElementById('btn-notif-otkaji').addEventListener('click', () => {
+  notifPermGranted = false;
+  localStorage.setItem('loom_notif','denied');
+  document.getElementById('notif-permission-layer').style.display = 'none';
+});
+
+/* ═══════════════════════════════════════════════════════════
+   AUTH STATE  – anonymous sign-in & note load
+══════════════════════════════════════════════════════════ */
+window.showLoomLoader();
+onAuthStateChanged(auth, async user => {
+  if (user) {
+    window.hideLoomLoader();
+    await loadSavedNotes(user.uid);
+  } else {
+    try {
+      await signInAnonymously(auth);
+    } catch(e) {
+      console.error('Anonymous sign-in failed', e);
+      window.hideLoomLoader();
+    }
+  }
+});
+
+/* ═══════════════════════════════════════════════════════════
+   AUTO-SAVE on page unload
+══════════════════════════════════════════════════════════ */
+window.addEventListener('pagehide', () => {
+  if (activeNote.open) saveActiveNote();
+});
+
+/* ═══════════════════════════════════════════════════════════
+   FCM foreground messages
+══════════════════════════════════════════════════════════ */
+onMessage(messaging, payload => {
+  console.log('FCM message', payload);
+  if (Notification.permission === 'granted') {
+    new Notification(payload.notification?.title || 'LOOM', {
+      body: payload.notification?.body || ''
+    });
+  }
+});
+
+</script>
+</body>
+</html>

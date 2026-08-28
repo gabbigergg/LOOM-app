@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LOOM – 2.html</title>
+
+  <!-- EmailJS SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+
+  <style>
+    /* ── RESET ─────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #000; }
+
+    /* ── SCALE WRAPPER  1080 × 1920 ────────────────────────── */
+    #app {
+      position: fixed;
+      top: 0; left: 0;
+      width: 1080px;
+      height: 1920px;
+      transform-origin: top left;
+      overflow: hidden;
+    }
+
+    /* ── GLOBAL LOADER ─────────────────────────────────────── */
+    #loom-global-loader {
+      display: none;
+      position: absolute;
+      inset: 0;
+      width: 1080px; height: 1920px;
+      background: rgba(0,0,0,0.52);
+      z-index: 99999;
+      pointer-events: all;
+      align-items: center;
+      justify-content: center;
+    }
+    #loom-global-loader img { width: 220px; height: auto; }
+
+    /* ── SCREENS (each 1080×1920, stacked) ─────────────────── */
+    .screen {
+      display: none;
+      position: absolute;
+      inset: 0;
+      width: 1080px; height: 1920px;
+    }
+    .screen.active { display: block; }
+
+    /* every PNG inside a screen is absolute, pixel-perfect */
+    .screen img.layer {
+      position: absolute;
+      top: 0; left: 0;
+      width: auto; height: auto;
+      user-select: none;
+    }
+    /* clickable images get a pointer */
+    .screen img.btn { cursor: pointer; }
+
+    /* ── INVISIBLE INPUT OVERLAY ────────────────────────────── */
+    /*  Each input field is an absolutely-positioned <div>
+        with a transparent <input> inside, sitting exactly on
+        top of the corresponding PNG.                           */
+    .field-wrap {
+      position: absolute;
+      overflow: hidden;
+    }
+    .field-wrap input {
+      width: 100%; height: 100%;
+      background: transparent;
+      border: none; outline: none;
+      font-family: 'SofiaSansExtraCondensed-Bold', sans-serif;
+      font-size: 18px;
+      color: #222;
+      padding: 0 14px;
+      caret-color: #555;
+    }
+    .field-wrap input::placeholder {
+      color: #999;
+      font-family: 'SofiaSansExtraCondensed-Bold', sans-serif;
+      font-size: 18px;
+    }
+
+    /* ── PROFILE PANEL (overlay on any screen) ─────────────── */
+    #profile-panel {
+      display: none;
+      position: absolute;
+      inset: 0;
+      width: 1080px; height: 1920px;
+      z-index: 8000;
+    }
+    #profile-panel img.layer { position: absolute; top:0; left:0; }
+    #profile-panel img.btn   { cursor: pointer; position: absolute; }
+
+    /* confirm-delete sub-panel */
+    #confirm-delete-panel {
+      display: none;
+      position: absolute;
+      inset: 0;
+      width: 1080px; height: 1920px;
+      z-index: 8500;
+    }
+    #confirm-delete-panel img { position: absolute; cursor: pointer; }
+
+    /* change-password "check email" screen */
+    #change-pass-panel {
+      display: none;
+      position: absolute;
+      inset: 0;
+      width: 1080px; height: 1920px;
+      z-index: 8200;
+    }
+    #change-pass-panel img { position: absolute; cursor: pointer; }
+
+    /* ── FONT FACES ─────────────────────────────────────────── */
+    @font-face {
+      font-family: 'SofiaSansExtraCondensed-Regular';
+      src: url('SofiaSansExtraCondensed-Regular.ttf') format('truetype');
+    }
+    @font-face {
+      font-family: 'SofiaSansExtraCondensed-Bold';
+      src: url('SofiaSansExtraCondensed-Bold.ttf') format('truetype');
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ══════════════════════════════════════════════════════
+       GLOBAL LOADER
+  ════════════════════════════════════════════════════════ -->
+  <div id="loom-global-loader">
+    <img src="Loom_anima.gif" alt="Зареждане…" />
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       SCREEN 1 – Landing (Login / Register / Guest)
+  ════════════════════════════════════════════════════════ -->
+  <div id="screen-1" class="screen active">
+    <!-- Фон -->
+    <img class="layer" src="bql_fon.png" style="width:1080px;height:1920px;" alt="" />
+    <!-- Декоративен елемент – най-горе -->
+    <img class="layer" id="deco-1" src="decorativen_loom_viziq.png" style="z-index:100;" alt="" />
+    <!-- Бутони -->
+    <img class="layer btn" id="btn-login"  src="vlez_belejka_log_in.png"         style="z-index:50;" alt="Влез" />
+    <img class="layer btn" id="btn-signup" src="registrirai_se_belejka_sign_up.png" style="z-index:50;" alt="Регистрирай се" />
+    <img class="layer btn" id="btn-guest"  src="buton_vlez_za_da_razgledash.png"  style="z-index:50;" alt="Разгледай" />
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       SCREEN 2 – Registration  (Sign Up)
+  ════════════════════════════════════════════════════════ -->
+  <div id="screen-2" class="screen">
+    <!-- Фон бележка -->
+    <img class="layer" src="belejka_osnova_za_registraciq_sign_up.png" style="width:1080px;height:1920px;" alt="" />
+    <!-- Декоративен елемент -->
+    <img class="layer" id="deco-2" src="decorativen_loom_viziq.png" style="z-index:100;" alt="" />
+
+    <!-- Фоново PNG за email поле (визия) -->
+    <img class="layer" src="registraciq_mqsto_za_email_sign_up.png"
+         style="left:338px; top:785px; z-index:10;" alt="" />
+    <!-- Фоново PNG за username поле -->
+    <img class="layer" src="registraciq_mqsto_za_potrebitelsko_ime_sign_up.png"
+         style="left:338px; top:966px; z-index:10;" alt="" />
+    <!-- Фоново PNG за парола поле -->
+    <img class="layer" src="registraciq_mqsto_za_parola_sign_up.png"
+         style="left:338px; top:1148px; z-index:10;" alt="" />
+
+    <!-- Прозрачни input-и точно върху PNG-тата -->
+    <!-- Email: left 338, top 785, w 458, h 49 -->
+    <div class="field-wrap" style="left:338px; top:785px; width:458px; height:49px; z-index:20;">
+      <input id="reg-email"    type="email"    autocomplete="email"
+             placeholder="type your email here" />
+    </div>
+    <!-- Username: left 338, top 966, w 458, h 49 -->
+    <div class="field-wrap" style="left:338px; top:966px; width:458px; height:49px; z-index:20;">
+      <input id="reg-username" type="text"     autocomplete="username"
+             placeholder="type your username here" />
+    </div>
+    <!-- Password: left 338, top 1148, w 458, h 49 -->
+    <div class="field-wrap" style="left:338px; top:1148px; width:458px; height:49px; z-index:20;">
+      <input id="reg-password" type="password" autocomplete="new-password"
+             placeholder="type your password here" />
+    </div>
+
+    <!-- Error label (hidden by default) -->
+    <div id="reg-error"
+         style="display:none; position:absolute; left:338px; top:1210px;
+                width:458px; font-family:'SofiaSansExtraCondensed-Bold',sans-serif;
+                font-size:18px; color:#c0392b; z-index:30; text-align:center;"></div>
+
+    <!-- Бутон Готово -->
+    <img class="layer btn" id="btn-reg-done"
+         src="buton_gotovo_sign_up_registraciq.png"
+         style="z-index:50;" alt="Готово" />
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       SCREEN 3 – Login  (Log In)
+  ════════════════════════════════════════════════════════ -->
+  <div id="screen-3" class="screen">
+    <!-- Фон -->
+    <img class="layer" src="belejka_osnova_za_vlizane_vlez_log_in.png"
+         style="width:1080px;height:1920px;" alt="" />
+    <!-- Декоративен елемент -->
+    <img class="layer" id="deco-3" src="decorativen_loom_viziq.png" style="z-index:100;" alt="" />
+
+    <!-- PNG визии на полетата -->
+    <img class="layer" src="log_in_mqsto_za_vuvejdane_na_email_ili_potrebitelsko.png"
+         style="left:338px; top:849px; z-index:10;" alt="" />
+    <img class="layer" src="log_in_mqsto_za_vuvejdane_na_parola.png"
+         style="left:338px; top:1054px; z-index:10;" alt="" />
+
+    <!-- Прозрачни input-и -->
+    <!-- Email/username: left 338, top 849, w 458, h 49 -->
+    <div class="field-wrap" style="left:338px; top:849px; width:458px; height:49px; z-index:20;">
+      <input id="li-email" type="text" autocomplete="email"
+             placeholder="type your email/username here" />
+    </div>
+    <!-- Password: left 338, top 1054, w 458, h 49 -->
+    <div class="field-wrap" style="left:338px; top:1054px; width:458px; height:49px; z-index:20;">
+      <input id="li-password" type="password" autocomplete="current-password"
+             placeholder="type your password here" />
+    </div>
+
+    <!-- Invalid error image (hidden) -->
+    <img class="layer" id="img-invalid-login"
+         src="text_nevaliden_email_parola_log_in.png"
+         style="z-index:40; display:none;" alt="Невалиден имейл или парола" />
+
+    <!-- Бутон Готово -->
+    <img class="layer btn" id="btn-li-done"
+         src="buton_gotovo_log_in_za_vuvedenite_danni.png"
+         style="z-index:50;" alt="Влез" />
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       SCREEN 4 – Save credentials on device?
+  ════════════════════════════════════════════════════════ -->
+  <div id="screen-4" class="screen">
+    <img class="layer" src="osnova_zapazvane_na_danni_sled_vhod_registraciq.png"
+         style="width:1080px;height:1920px;" alt="" />
+    <img class="layer" id="deco-4" src="decorativen_loom_viziq.png" style="z-index:100;" alt="" />
+    <img class="layer btn" id="btn-save-yes"
+         src="buton_pozvoli_za_osnova_zapazvane_na_danni_sled_vhod_registraciq.png"
+         style="z-index:50;" alt="Позволи" />
+    <img class="layer btn" id="btn-save-no"
+         src="buton_otkaji_za_osnova_zapazvane_na_danni_sled_vhod_registraciq.png"
+         style="z-index:50;" alt="Откажи" />
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       SCREEN 5 – Notifications permission
+  ════════════════════════════════════════════════════════ -->
+  <div id="screen-5" class="screen">
+    <img class="layer" src="belejka_osnova_priemi_izvestiqta.png"
+         style="width:1080px;height:1920px;" alt="" />
+    <img class="layer" id="deco-5" src="decorativen_loom_viziq.png" style="z-index:100;" alt="" />
+    <img class="layer btn" id="btn-notif-yes"
+         src="buton_priemi_izvestiqta1.png"
+         style="z-index:50;" alt="Приеми" />
+    <img class="layer btn" id="btn-notif-no"
+         src="buton_otkaji_izvestiqta1.png"
+         style="z-index:50;" alt="Откажи" />
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       PROFILE PANEL  (overlay on 1.html via postMessage
+       OR shown inside 2.html when buton_loom_za_profil is pressed)
+  ════════════════════════════════════════════════════════ -->
+  <div id="profile-panel">
+    <img class="layer" src="osnova_profil_nastroiki.png"
+         style="width:1080px;height:1920px; z-index:0;" alt="" />
+    <img class="btn" id="btn-prof-changepass"
+         src="buton_smqna_na_parola_potrebitelsko_ime_profil_nastroiki.png"
+         style="z-index:20;" alt="Смяна парола" />
+    <img class="btn" id="btn-prof-logout"
+         src="buton_izhod_profil_nastroiki.png"
+         style="z-index:20;" alt="Изход" />
+    <img class="btn" id="btn-prof-delete"
+         src="buton_iztrivane_na_profila_profil_nastroiki.png"
+         style="z-index:20;" alt="Изтрий профил" />
+    <img class="btn" id="btn-prof-back"
+         src="buton_za_vrushtane_nazad.png"
+         style="z-index:20;" alt="Назад" />
+  </div>
+
+  <!-- Guest profile panel variant -->
+  <div id="profile-panel-guest">
+    <!-- Reuses same background -->
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       CONFIRM DELETE PANEL
+  ════════════════════════════════════════════════════════ -->
+  <div id="confirm-delete-panel">
+    <img src="izvestie_sigurni_li_ste_za_iztrivaneto_na_profila.png"
+         style="position:absolute; top:0; left:0; width:1080px; height:1920px;" alt="" />
+    <img class="btn" id="btn-del-no"
+         src="buton_izvestie_sigurni_li_ste_za_iztrivaneto_na_profila_otkaji.png"
+         style="z-index:10;" alt="Откажи" />
+    <img class="btn" id="btn-del-yes"
+         src="buton_izvestie_sigurni_li_ste_za_iztrivaneto_na_profila_priemi_i_iztrii.png"
+         style="z-index:10;" alt="Изтрий" />
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       CHANGE PASSWORD "Check your email" PANEL
+  ════════════════════════════════════════════════════════ -->
+  <div id="change-pass-panel">
+    <img src="belejka_osnova_sled_buton_smqna_na_parola_ili_potrebitelsko_ime_belejka_vlezte_v_emaila_si.png"
+         style="position:absolute; top:0; left:0; width:1080px; height:1920px;" alt="" />
+    <img class="btn" id="btn-changepass-back"
+         src="buton_za_vrushtane_nazad.png"
+         style="position:absolute; z-index:10;" alt="Назад" />
+  </div>
+
+</div><!-- /#app -->
+
+
+<!-- ══════════════════════════════════════════════════════════
+     JAVASCRIPT  (Firebase module + full logic)
+════════════════════════════════════════════════════════════ -->
+<script type="module">
+/* ─── Firebase imports ──────────────────────────────────── */
+import { initializeApp }
+  from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
+import {
+  getAuth,
+  onAuthStateChanged,
+  signInAnonymously,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
+  linkWithCredential,
+  EmailAuthProvider,
+  deleteUser,
+  signOut
+} from "https://www.gstatic.com/firebasejs/12.17.1/firebase-auth.js";
+import {
+  getFirestore,
+  doc,
+  setDoc,
+  getDoc,
+  collection,
+  getDocs,
+  deleteDoc
+} from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
+import { getAnalytics }
+  from "https://www.gstatic.com/firebasejs/12.17.1/firebase-analytics.js";
+
+/* ─── Firebase init ─────────────────────────────────────── */
+const firebaseConfig = {
+  apiKey:            "AIzaSyBuvj_grP4GZ9T5GuQCLo4dx7KehZIBgSw",
+  authDomain:        "loom-e0b46.firebaseapp.com",
+  projectId:         "loom-e0b46",
+  storageBucket:     "loom-e0b46.firebasestorage.app",
+  messagingSenderId: "813806858100",
+  appId:             "1:813806858100:web:6c642ffa831b1713d60621",
+  measurementId:     "G-1ZN47R60LH"
+};
+const fbApp     = initializeApp(firebaseConfig);
+const auth      = getAuth(fbApp);
+const db        = getFirestore(fbApp);
+const analytics = getAnalytics(fbApp);
+
+/* ─── EmailJS init ──────────────────────────────────────── */
+emailjs.init("UMm5X0he_bMYDZPpG");
+
+/* ══════════════════════════════════════════════════════════
+   LOADER helpers
+══════════════════════════════════════════════════════════ */
+const loaderEl = document.getElementById('loom-global-loader');
+function showLoader() { loaderEl.style.display = 'flex'; }
+function hideLoader() { loaderEl.style.display = 'none'; }
+window.showLoomLoader = showLoader;
+window.hideLoomLoader = hideLoader;
+
+/* ══════════════════════════════════════════════════════════
+   SCALE  1080×1920 → viewport  (top & bottom anchored)
+══════════════════════════════════════════════════════════ */
+const appEl = document.getElementById('app');
+function applyScale() {
+  const scale   = window.innerHeight / 1920;
+  const offsetX = (window.innerWidth - 1080 * scale) / 2;
+  appEl.style.transform = `translate(${offsetX}px, 0) scale(${scale})`;
+}
+applyScale();
+window.addEventListener('resize', applyScale);
+
+/* ══════════════════════════════════════════════════════════
+   SCREEN ROUTER
+══════════════════════════════════════════════════════════ */
+const screens = {
+  1: document.getElementById('screen-1'),
+  2: document.getElementById('screen-2'),
+  3: document.getElementById('screen-3'),
+  4: document.getElementById('screen-4'),
+  5: document.getElementById('screen-5'),
+};
+
+function showScreen(n) {
+  Object.values(screens).forEach(s => s.classList.remove('active'));
+  if (screens[n]) screens[n].classList.add('active');
+}
+
+/* ══════════════════════════════════════════════════════════
+   LOCAL STORAGE HELPERS
+══════════════════════════════════════════════════════════ */
+const LS_SAVE_CREDS  = 'loom_save_creds';   // 'yes' | 'no'
+const LS_NOTIF       = 'loom_notif';         // 'granted' | 'denied'
+const LS_UID         = 'loom_uid';
+const LS_EMAIL       = 'loom_email';
+const LS_PASS        = 'loom_pass';          // stored only on user consent
+
+function credsSaved()   { return localStorage.getItem(LS_SAVE_CREDS) === 'yes'; }
+function notifGranted() { return localStorage.getItem(LS_NOTIF) === 'granted'; }
+
+/* ══════════════════════════════════════════════════════════
+   REDIRECT TO 1.html  (after full auth flow)
+══════════════════════════════════════════════════════════ */
+function goTo1html() {
+  window.location.href = '1.html';
+}
+
+/* ══════════════════════════════════════════════════════════
+   INITIAL AUTH STATE CHECK
+   – If credentials are saved → auto-login and go to 1.html
+   – If already signed in (anonymous or real) → check flow
+══════════════════════════════════════════════════════════ */
+showLoader();
+onAuthStateChanged(auth, async user => {
+  try {
+    if (user && !user.isAnonymous && credsSaved()) {
+      // Auto-login: skip 2.html entirely
+      goTo1html();
+      return;
+    }
+    // Show landing screen
+    showScreen(1);
+  } finally {
+    hideLoader();
+  }
+});
+
+/* ══════════════════════════════════════════════════════════
+   SCREEN 1  –  Landing button handlers
+══════════════════════════════════════════════════════════ */
+
+/* → Sign Up */
+document.getElementById('btn-signup').addEventListener('click', () => {
+  clearRegFields();
+  showScreen(2);
+});
+
+/* → Log In */
+document.getElementById('btn-login').addEventListener('click', () => {
+  clearLoginFields();
+  showScreen(3);
+});
+
+/* → Guest (anonymous) */
+document.getElementById('btn-guest').addEventListener('click', async () => {
+  try {
+    showLoader();
+    await signInAnonymously(auth);
+    goTo1html();
+  } catch (err) {
+    console.error('Anonymous sign-in failed:', err);
+    alert('Неуспешен анонимен вход. Опитайте отново.');
+  } finally {
+    hideLoader();
+  }
+});
+
+/* ══════════════════════════════════════════════════════════
+   SCREEN 2  –  Registration
+══════════════════════════════════════════════════════════ */
+function clearRegFields() {
+  document.getElementById('reg-email').value    = '';
+  document.getElementById('reg-username').value = '';
+  document.getElementById('reg-password').value = '';
+  document.getElementById('reg-error').style.display = 'none';
+}
+
+document.getElementById('btn-reg-done').addEventListener('click', async () => {
+  const email    = document.getElementById('reg-email').value.trim();
+  const username = document.getElementById('reg-username').value.trim();
+  const password = document.getElementById('reg-password').value;
+  const errEl    = document.getElementById('reg-error');
+
+  /* Validation */
+  if (!email || !validateEmail(email)) {
+    showRegError('Моля въведете валиден имейл адрес.'); return;
+  }
+  if (password.length <= 4) {
+    showRegError('Паролата трябва да е повече от 4 символа.'); return;
+  }
+
+  try {
+    showLoader();
+    errEl.style.display = 'none';
+
+    let userCred;
+    const currentUser = auth.currentUser;
+
+    if (currentUser && currentUser.isAnonymous) {
+      // Link anonymous → permanent account
+      const credential = EmailAuthProvider.credential(email, password);
+      userCred = await linkWithCredential(currentUser, credential);
+    } else {
+      userCred = await createUserWithEmailAndPassword(auth, email, password);
+    }
+
+    const uid = userCred.user.uid;
+
+    // Save username to Firestore
+    await setDoc(doc(db, `users/${uid}/profile/info`), {
+      username,
+      email,
+      createdAt: new Date().toISOString()
+    });
+
+    // Check username uniqueness (best-effort; Firestore rules enforce strict uniqueness)
+    await ensureUsernameUnique(username, uid);
+
+    // Send welcome email via EmailJS
+    await emailjs.send('service_gz5umqa', 'template_ycxqhdh', {
+      user_email: email,
+      user_name:  username
+    });
+
+    // Store for possible auto-save step
+    sessionStorage.setItem('_reg_email', email);
+    sessionStorage.setItem('_reg_pass',  password);
+
+    showScreen(4);
+  } catch (err) {
+    console.error('Registration error:', err);
+    if (err.code === 'auth/email-already-in-use') {
+      showRegError('Този имейл вече е регистриран.');
+    } else {
+      showRegError('Грешка при регистрация: ' + friendlyError(err));
+    }
+  } finally {
+    hideLoader();
+  }
+});
+
+function showRegError(msg) {
+  const el = document.getElementById('reg-error');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+async function ensureUsernameUnique(username, uid) {
+  // Store username in a global index for uniqueness (best-effort)
+  const ref = doc(db, `usernames/${username}`);
+  const snap = await getDoc(ref);
+  if (snap.exists() && snap.data().uid !== uid) {
+    throw new Error('username-taken');
+  }
+  await setDoc(ref, { uid });
+}
+
+/* ══════════════════════════════════════════════════════════
+   SCREEN 3  –  Login
+══════════════════════════════════════════════════════════ */
+function clearLoginFields() {
+  document.getElementById('li-email').value    = '';
+  document.getElementById('li-password').value = '';
+  document.getElementById('img-invalid-login').style.display = 'none';
+}
+
+document.getElementById('btn-li-done').addEventListener('click', async () => {
+  const emailOrUser = document.getElementById('li-email').value.trim();
+  const password    = document.getElementById('li-password').value;
+  const invalidImg  = document.getElementById('img-invalid-login');
+
+  invalidImg.style.display = 'none';
+
+  if (!emailOrUser || !password) {
+    invalidImg.style.display = 'block'; return;
+  }
+
+  try {
+    showLoader();
+
+    // Resolve username → email if needed
+    const email = await resolveToEmail(emailOrUser);
+    if (!email) { invalidImg.style.display = 'block'; return; }
+
+    await signInWithEmailAndPassword(auth, email, password);
+
+    sessionStorage.setItem('_reg_email', email);
+    sessionStorage.setItem('_reg_pass',  password);
+
+    // If notifications never answered → show screen 5 after screen 4
+    showScreen(4);
+
+  } catch (err) {
+    console.error('Login error:', err);
+    invalidImg.style.display = 'block';
+  } finally {
+    hideLoader();
+  }
+});
+
+/**
+ * If input looks like an email → use it directly.
+ * Otherwise query Firestore usernames/{username} → uid
+ * then get email from users/{uid}/profile/info.
+ */
+async function resolveToEmail(input) {
+  if (validateEmail(input)) return input;
+  // Treat as username
+  try {
+    const uSnap = await getDoc(doc(db, `usernames/${input}`));
+    if (!uSnap.exists()) return null;
+    const uid   = uSnap.data().uid;
+    const pSnap = await getDoc(doc(db, `users/${uid}/profile/info`));
+    if (!pSnap.exists()) return null;
+    return pSnap.data().email || null;
+  } catch { return null; }
+}
+
+/* ══════════════════════════════════════════════════════════
+   SCREEN 4  –  Save credentials on device?
+══════════════════════════════════════════════════════════ */
+document.getElementById('btn-save-yes').addEventListener('click', () => {
+  localStorage.setItem(LS_SAVE_CREDS, 'yes');
+  // Store credentials so next visit auto-logs in
+  const email = sessionStorage.getItem('_reg_email') || '';
+  const pass  = sessionStorage.getItem('_reg_pass')  || '';
+  localStorage.setItem(LS_EMAIL, email);
+  localStorage.setItem(LS_PASS,  pass);
+  afterSaveDecision();
+});
+
+document.getElementById('btn-save-no').addEventListener('click', () => {
+  localStorage.setItem(LS_SAVE_CREDS, 'no');
+  localStorage.removeItem(LS_EMAIL);
+  localStorage.removeItem(LS_PASS);
+  afterSaveDecision();
+});
+
+function afterSaveDecision() {
+  // Check whether we already have notification permission recorded
+  const notifStatus = localStorage.getItem(LS_NOTIF);
+  if (notifStatus === 'granted') {
+    // Already granted → go straight to 1.html
+    goTo1html();
+  } else {
+    // Show screen 5
+    showScreen(5);
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   SCREEN 5  –  Notifications
+══════════════════════════════════════════════════════════ */
+document.getElementById('btn-notif-yes').addEventListener('click', async () => {
+  try {
+    // Request browser notification permission
+    if ('Notification' in window) {
+      await Notification.requestPermission();
+    }
+  } catch(e) { console.warn(e); }
+  localStorage.setItem(LS_NOTIF, 'granted');
+  // Save pref to Firestore as well
+  await saveNotifPref('granted');
+  goTo1html();
+});
+
+document.getElementById('btn-notif-no').addEventListener('click', async () => {
+  localStorage.setItem(LS_NOTIF, 'denied');
+  await saveNotifPref('denied');
+  goTo1html();
+});
+
+async function saveNotifPref(value) {
+  const user = auth.currentUser;
+  if (!user) return;
+  try {
+    await setDoc(doc(db, `users/${user.uid}/profile/prefs`), { notif: value }, { merge: true });
+  } catch(e) { console.warn('saveNotifPref', e); }
+}
+
+/* ══════════════════════════════════════════════════════════
+   PROFILE PANEL  (буton_loom_za_profil.png triggers this
+   via a cross-page postMessage from 1.html, OR from inside
+   2.html itself via the exported openProfilePanel() fn)
+══════════════════════════════════════════════════════════ */
+const profilePanel = document.getElementById('profile-panel');
+let profilePanelOpen = false;
+
+/* Exported so 1.html can call: frames['loom-auth'].openProfilePanel() */
+window.openProfilePanel = openProfilePanel;
+window.closeProfilePanel = closeProfilePanel;
+
+function openProfilePanel() {
+  profilePanel.style.display = 'block';
+  profilePanelOpen = true;
+}
+function closeProfilePanel() {
+  profilePanel.style.display = 'none';
+  profilePanelOpen = false;
+  // Also hide sub-panels
+  document.getElementById('confirm-delete-panel').style.display = 'none';
+  document.getElementById('change-pass-panel').style.display    = 'none';
+}
+
+/* Back */
+document.getElementById('btn-prof-back').addEventListener('click', closeProfilePanel);
+
+/* Toggle on second press of the profile button (handled from 1.html;
+   here we also toggle if the panel is called from within 2.html) */
+
+/* ── Change password ──────────────────────────────────── */
+document.getElementById('btn-prof-changepass').addEventListener('click', async () => {
+  const user = auth.currentUser;
+  if (!user || !user.email) return;
+  try {
+    showLoader();
+    // Generate Firebase password-reset link
+    await sendPasswordResetEmail(auth, user.email);
+    // Send email via EmailJS with the reset instruction
+    await emailjs.send('service_gz5umqa', 'template_wq2piih', {
+      user_email: user.email,
+      reset_link: 'https://loom-e0b46.firebaseapp.com/__/auth/action?mode=resetPassword'
+    });
+  } catch(e) { console.error('sendPasswordReset', e); }
+  finally { hideLoader(); }
+
+  // Show "check your email" panel
+  document.getElementById('change-pass-panel').style.display = 'block';
+});
+
+document.getElementById('btn-changepass-back').addEventListener('click', () => {
+  document.getElementById('change-pass-panel').style.display = 'none';
+});
+
+/* ── Logout ───────────────────────────────────────────── */
+document.getElementById('btn-prof-logout').addEventListener('click', async () => {
+  const user = auth.currentUser;
+  if (user && user.isAnonymous) {
+    const ok = confirm(
+      'Внимание: Ако излезете без регистрация, бележките ви няма да бъдат достъпни от друго устройство.'
+    );
+    if (!ok) return;
+  }
+  try {
+    showLoader();
+    // Clear saved credentials
+    localStorage.removeItem(LS_SAVE_CREDS);
+    localStorage.removeItem(LS_EMAIL);
+    localStorage.removeItem(LS_PASS);
+    await signOut(auth);
+    closeProfilePanel();
+    showScreen(1);
+  } catch(e) { console.error('Logout', e); }
+  finally { hideLoader(); }
+});
+
+/* ── Delete profile ───────────────────────────────────── */
+document.getElementById('btn-prof-delete').addEventListener('click', () => {
+  closeProfilePanel();
+  document.getElementById('confirm-delete-panel').style.display = 'block';
+});
+
+document.getElementById('btn-del-no').addEventListener('click', () => {
+  document.getElementById('confirm-delete-panel').style.display = 'none';
+  openProfilePanel();
+});
+
+document.getElementById('btn-del-yes').addEventListener('click', async () => {
+  const user = auth.currentUser;
+  if (!user) return;
+  try {
+    showLoader();
+    const uid = user.uid;
+    // Delete all notes from Firestore
+    const notesSnap = await getDocs(collection(db, `users/${uid}/notes`));
+    for (const d of notesSnap.docs) await deleteDoc(d.ref);
+    // Delete profile docs
+    await deleteDoc(doc(db, `users/${uid}/profile/info`))
+      .catch(() => {});
+    await deleteDoc(doc(db, `users/${uid}/profile/prefs`))
+      .catch(() => {});
+    // Delete Firebase Auth user
+    await deleteUser(user);
+    // Clear local storage
+    localStorage.removeItem(LS_SAVE_CREDS);
+    localStorage.removeItem(LS_EMAIL);
+    localStorage.removeItem(LS_PASS);
+    localStorage.removeItem(LS_NOTIF);
+    document.getElementById('confirm-delete-panel').style.display = 'none';
+    showScreen(1);
+  } catch(e) {
+    console.error('Delete profile', e);
+    // Firebase may require recent login – prompt re-auth
+    alert('Грешка при изтриване. Моля, излезте и влезте отново.');
+  } finally {
+    hideLoader();
+  }
+});
+
+/* ══════════════════════════════════════════════════════════
+   CROSS-FRAME / postMessage  API
+   1.html can send messages here to open/close the profile
+   panel or to trigger a logout. Also used to get the current
+   auth user object.
+══════════════════════════════════════════════════════════ */
+window.addEventListener('message', async (e) => {
+  if (!e.data || !e.data.loom) return;
+  switch (e.data.loom) {
+    case 'openProfile':   openProfilePanel(); break;
+    case 'closeProfile':  closeProfilePanel(); break;
+    case 'logout':        document.getElementById('btn-prof-logout').click(); break;
+    case 'getUser':
+      e.source?.postMessage({
+        loom: 'user',
+        uid:   auth.currentUser?.uid   || null,
+        email: auth.currentUser?.email || null,
+        isAnon: auth.currentUser?.isAnonymous ?? true
+      }, '*');
+      break;
+  }
+});
+
+/* ══════════════════════════════════════════════════════════
+   AUTO-LOGIN  (if credentials were saved on device)
+══════════════════════════════════════════════════════════ */
+(async () => {
+  if (credsSaved()) {
+    const savedEmail = localStorage.getItem(LS_EMAIL);
+    const savedPass  = localStorage.getItem(LS_PASS);
+    if (savedEmail && savedPass) {
+      try {
+        showLoader();
+        await signInWithEmailAndPassword(auth, savedEmail, savedPass);
+        goTo1html();
+        return;
+      } catch(e) {
+        console.warn('Auto-login failed, showing landing:', e);
+        localStorage.removeItem(LS_SAVE_CREDS);
+        localStorage.removeItem(LS_EMAIL);
+        localStorage.removeItem(LS_PASS);
+      } finally {
+        hideLoader();
+      }
+    }
+  }
+})();
+
+/* ══════════════════════════════════════════════════════════
+   UTILITY
+══════════════════════════════════════════════════════════ */
+function validateEmail(v) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+}
+
+function friendlyError(err) {
+  const map = {
+    'auth/email-already-in-use': 'Имейлът вече е регистриран.',
+    'auth/invalid-email':        'Невалиден имейл адрес.',
+    'auth/weak-password':        'Паролата е твърде слаба.',
+    'auth/user-not-found':       'Потребителят не е намерен.',
+    'auth/wrong-password':       'Грешна парола.',
+    'auth/too-many-requests':    'Твърде много опити. Опитайте по-късно.',
+    'auth/network-request-failed': 'Мрежова грешка.',
+  };
+  return map[err.code] || err.message || 'Неизвестна грешка.';
+}
+
+</script>
+</body>
+</html>
